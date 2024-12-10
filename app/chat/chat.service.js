@@ -30,7 +30,7 @@ const SaveMessageOperator = async (data,user,ai) => {
             merchantId:user.merchantId,
             sid:user.cookieId,
             messages:[message],
-            data:[]
+            data:[],
         })
     }
 }
@@ -45,6 +45,7 @@ const SaveMessageClient = async (data,user) => {
         isFile:false,
         type:"",
         link:"",
+        fullTime:data.fullTime
     }
 
     // Check Messages Type

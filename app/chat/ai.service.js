@@ -129,7 +129,8 @@ module.exports = class AI {
             }
         }
 
-        return {message:response,type,data};
+        return {
+            message:response,type,data};
     }
 
     // async getProducts(mtid){

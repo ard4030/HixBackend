@@ -24,6 +24,7 @@ module.exports = class Application{
         this.#app.use(cors({
             credentials: true,
             origin: [
+                "https://hix-operator.vercel.app",
                 "http://localhost:5500",
                 "http://localhost:3000",
                 "http://localhost:3200",

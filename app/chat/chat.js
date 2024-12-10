@@ -34,6 +34,7 @@ class ChatApplication {
                     "http://localhost:5500",
                     "http://localhost:3000",
                     "http://127.0.0.1:5500",
+                    "https://hix-operator.vercel.app",
                     "https://hixnew.liara.run"
                 ],
                 credentials: true
@@ -263,13 +264,17 @@ class ChatApplication {
         
         // Save Client Message
         if(data.ai){
+            data.time = Date.now();
+            data.fullTime = convertMillisToJalali(data.time)
             await SaveMessageClient(data,user,false)
             const ai = new AI(user.merchantId)
-            const finall = await ai.respondToMessage(data.message)
+            let finall = await ai.respondToMessage(data.message);
+            finall.fullTime = convertMillisToJalali(data.time)
             this.io.to(socket.id).emit('newMessageFromOperator', {
                 type:finall.type,
                 message:finall.message,
-                data:finall.data
+                data:finall.data,
+                fullTime:data.fullTime
             });
             await SaveMessageOperator(finall,user,true);
             
@@ -280,12 +285,15 @@ class ChatApplication {
                 {key:"2",value:"ارزونترین محصولتون چیه؟",qs:"این محصول قیمت مناسبی دارد"},
                 {key:"3",value:"چطور میتونم هیکس رو داشته باشم؟",qs:"این لیست محصولات است"},
             ]
+            data.time = Date.now();
+            data.fullTime = convertMillisToJalali(data.time)
             await SaveMessageClient(data,user,false)
             await SaveMessageOperator(data,user,false);
             this.io.to(socket.id).emit('newMessageFromOperator', {
                 type:"text",
                 message:data.item.key,
-                data:qss
+                data:qss,
+                fullTime:data.fullTime
             });
 
             return
@@ -296,13 +304,16 @@ class ChatApplication {
             
             // Check target Operator 
             if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+                data.time = Date.now();
+                data.fullTime = convertMillisToJalali(data.time)
+
                 this.io.to(user.targetOperator).emit('newMessageFromUser', {
                     type:data.type,
                     socketID:socket.id,
-                    message:data.message
+                    message:data.message,
+                    fullTime:data.fullTime
                 });
-                data.time = Date.now();
-                data.fullTime = convertMillisToJalali(data.time)
+                
                 const message = await SaveMessageClient(data,user);
 
                 // Set Last Message User List
@@ -324,13 +335,16 @@ class ChatApplication {
 
             }else{
                 const freeFirstOperator = getFreeOperators(this.onlineOperators,this.onlineUsers,user.merchantId)
+                data.time = Date.now();
+                data.fullTime = convertMillisToJalali(data.time)
+                
                 this.io.to(freeFirstOperator).emit('newMessageFromUser', {
                     type:data.type,
                     socketID:socket.id,
-                    message:data.message
+                    message:data.message,
+                    fullTime:data.fullTime
                 });
-                data.time = Date.now();
-                data.fullTime = convertMillisToJalali(data.time)
+                
                 await SaveMessageClient(data,user);
 
                 // Set Last Message User List
@@ -359,6 +373,7 @@ class ChatApplication {
             data.time = Date.now();
             data.fullTime = convertMillisToJalali(data.time)
             this.io.to(targetUser.id).emit('newMessageFromOperator', data);
+            callback({success:true,message:data})
         }
         try {
             data.time = Date.now();
@@ -445,14 +460,17 @@ class ChatApplication {
             // فایل را آپلود می‌کنیم
             const fileUpload = await uploadFile(data);
             // console.log(data)
+            
 
             if(fileUpload){
-                const datanew = {
+                let datanew = {
                     type:data.type,
                     link:fileUpload,
                     fullLink:`${process.env.LIARA_IMAGE_URL}${fileUpload}`,
-                    socketID:socket.id
+                    socketID:socket.id,
                 }
+                datanew.time = Date.now();
+                datanew.fullTime = convertMillisToJalali(data.time)
 
                 this.io.to(operatorSocketId).emit('newMessageFromUser', datanew);
                 await SaveMessageClient(datanew,user);
@@ -485,7 +503,8 @@ class ChatApplication {
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
                     fileName:datanew.fullLink,
-                    type:data.type
+                    type:data.type,
+                    fullTime:datanew.fullTime
                 })
             }else{
                 callback({success:false,message:"خطا در آپلود فایل"})
@@ -509,23 +528,28 @@ class ChatApplication {
             const fileUpload = await uploadFile(data);
 
             if(fileUpload){
-                const datanew = {
+                let datanew = {
                     type:data.type,
                     link:fileUpload,
                     fullLink:`${process.env.LIARA_IMAGE_URL}${fileUpload}`
                 }
+                datanew.time = Date.now();
+                datanew.fullTime = convertMillisToJalali(data.time)
+
                 this.io.to(user.id).emit('newMessageFromOperator',{
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
                     fileName:datanew.fullLink,
-                    type:data.type
+                    type:data.type,
+                    fullTime:datanew.fullTime
                 });
                 await SaveMessageOperator(datanew,user);
                 callback({
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
                     fileName:datanew.fullLink,
-                    type:data.type
+                    type:data.type,
+                    fullTime:datanew.fullTime
                 })
             }else{
                 callback({success:false,message:"خطا در آپلود فایل"})
