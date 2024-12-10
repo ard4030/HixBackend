@@ -9,12 +9,13 @@ const SaveMessageOperator = async (data,user,ai) => {
         type:data.type,
         sender:ai?"ai": data.qs? "qs" :"operator",
         seen:false,
-        datatime:new Date().getDay(),
+        datatime:data.time,
         content:data.qs?data.item.key:data.message,
         isFile:false,
         data:data.data || [],
         isFile:false,
-        link:data.link || ""
+        link:data.link || "",
+        fullTime:data.fullTime
     }
 
     const isChat = await ChatModel.findOne({sid:user.cookieId,merchantId:user.merchantId})
@@ -40,10 +41,10 @@ const SaveMessageClient = async (data,user) => {
         sender:"guest",
         name:user.name,
         seen:false,
-        datatime:new Date().getDay(),
+        datatime:data.time,
         isFile:false,
         type:"",
-        link:""
+        link:"",
     }
 
     // Check Messages Type
@@ -72,13 +73,14 @@ const SaveMessageClient = async (data,user) => {
             break;
     }
 
-    const isChat = await ChatModel.findOne({sid:user.cookieId,merchantId:user.merchantId})
+    const isChat = await ChatModel.findOne({sid:user.cookieId,merchantId:user.merchantId});
+    let saveMessage = null;
     if(isChat){
-        await ChatModel.updateOne({sid:user.cookieId,merchantId:user.merchantId},{
+        saveMessage = await ChatModel.updateOne({sid:user.cookieId,merchantId:user.merchantId},{
             $push:{messages:message}
         })
     }else{
-        await ChatModel.create({
+        saveMessage = await ChatModel.create({
             name:user.name,
             email:user.email,
             sid:user.cookieId,
@@ -86,6 +88,7 @@ const SaveMessageClient = async (data,user) => {
             messages:[message]
         })
     }
+  
 }
 
 const getMessageBySid = async (sid) => {

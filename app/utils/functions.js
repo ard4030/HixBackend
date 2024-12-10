@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require("jsonwebtoken");
 const { S3Client, PutObjectCommand , GetObjectCommand  } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const moment = require('moment-jalaali');
 // require('dotenv').config();
 
 const hashPassword = async (pass) => {
@@ -255,9 +256,80 @@ const getFileLink = async (fileName) => {
     // })
 }
 
+const getLastMessage = (lastMessage) => {
+    switch (lastMessage.type) {
+        case "text":
+            return lastMessage.content
+        case "slider":
+            return "لیست محصولات"
+        case "image/jpeg":    
+            return "عکس"
+        case "application/x-zip-compressed": 
+            return "فایل"   
+        case "video/mp4":    
+            return "ویدیو"
+        case "application/pdf":  
+            return "سند"  
+        default:
+            return "پشتیبانی نمیشه";
+    }
+}
+
+const convertMillisToJalali = (millis) => {
+    // تبدیل میلی‌ثانیه به تاریخ میلادی با moment
+    const date = moment(millis);
+
+    // فرمت کردن تاریخ به شمسی
+    const jDate = date.format('jYYYY/jMM/jDD');
+
+    // دریافت روز، ماه و سال
+    const jYear = date.jYear();
+    const jMonth = date.jMonth() + 1; // ماه شمسی از صفر شروع می‌شود
+    const jDay = date.jDate();
+
+    // نام ماه شمسی
+    const monthName = getMonthName(jMonth);
+
+    // ساعت و دقیقه با فرمت 12 ساعته و AM/PM
+    const jHour = date.format('hh'); // ساعت به فرمت 12 ساعته
+    const jMinute = date.format('mm'); // دقیقه
+    const ampm = date.format('A'); // AM یا PM
+
+    // برگشت دادن تاریخ شمسی به همراه ساعت و دقیقه و AM/PM
+    return {
+        year: jYear,
+        month: jMonth,
+        day: jDay,
+        monthName: monthName,
+        hour: jHour,
+        minute: jMinute,
+        ampm: ampm, // AM یا PM
+        formattedDate: jDate,  // تاریخ شمسی به فرمت 'jYYYY/jMM/jDD'
+    };
+}
+
+const getMonthName = (month) => {
+    switch (month) {
+        case 1: return "فروردین";
+        case 2: return "اردیبهشت";
+        case 3: return "خرداد";
+        case 4: return "تیر";
+        case 5: return "مرداد";
+        case 6: return "شهریور";
+        case 7: return "مهر";
+        case 8: return "آبان";
+        case 9: return "آذر";
+        case 10: return "دی";
+        case 11: return "بهمن";
+        case 12: return "اسفند";
+        default: return "";
+    }
+}
+
 module.exports = {
     hashPassword,unhashPassword,SignAccessToken,verifyJwtToken,
     generateApiKey,pushUnique,getCookie,generateUserChatToken,verifyUserChatToken,
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
-    getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators
+    getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
+    convertMillisToJalali
 }

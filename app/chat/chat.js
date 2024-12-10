@@ -3,7 +3,9 @@ const { getCookie, generateUserChatToken, verifyUserChatToken, getUserAndOperato
      getOperatorsByMerchantId, getUsersByMerchantId, uploadFile, getFileLink, 
      getOperatorBySocketId,
      getLockUser,
-     getFreeOperators} = require("../utils/functions");
+     getFreeOperators,
+     getLastMessage,
+     convertMillisToJalali} = require("../utils/functions");
 const { OperatorsModel } = require("../model/OperatorsModel");
 const { UserModel } = require("../model/UserModel");
 const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./chat.service");
@@ -60,7 +62,7 @@ class ChatApplication {
             socket.on('join', (data, callback) => this.handleJoin(socket, data, callback));
             socket.on('userInfo', (userData,callback) => this.handleUserInfo(socket, userData,callback));
             socket.on('disconnect', () => this.handleDisconnect(socket));
-            socket.on('sendMessageToOperator', (data) => this.handleSendMessageToOperator(socket, data));
+            socket.on('sendMessageToOperator', (data,callback) => this.handleSendMessageToOperator(socket, data , callback));
             socket.on('sendMessageToUser', (data,callback) => this.handleSendMessageToUser(socket, data,callback));
             socket.on("getMessages", (data, callback) => this.handleGetMessages(data, callback,socket));
             socket.on("qusetions", (data, callback) => this.handleGetQuestions(callback,data));
@@ -159,7 +161,8 @@ class ChatApplication {
             // Get Last Message
             const messages = await ChatModel.findOne({sid:details.sid});
             if(messages){
-                this.onlineUsers[user._id][socket.id]['lastMessage']= messages.messages[messages.messages.length-1].content;
+                const lastMessage = getLastMessage(messages.messages[messages.messages.length-1]);
+                this.onlineUsers[user._id][socket.id]['lastMessage']= lastMessage;
                 this.onlineUsers[user._id][socket.id]['lastMessageSeen']= false
             }
             
@@ -254,7 +257,7 @@ class ChatApplication {
     }
 
     // Handle Send Message From Client To Operator
-    async handleSendMessageToOperator(socket, data){
+    async handleSendMessageToOperator(socket, data , callback){
         const details = await verifyUserChatToken(data.cookieId)
         const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
         
@@ -288,6 +291,7 @@ class ChatApplication {
             return
         }
        
+        // Check exist Operators
         if(user && this.onlineOperators[user.merchantId] && Object.values(this.onlineOperators?.[user.merchantId]).length > 0){
             
             // Check target Operator 
@@ -297,7 +301,9 @@ class ChatApplication {
                     socketID:socket.id,
                     message:data.message
                 });
-                await SaveMessageClient(data,user);
+                data.time = Date.now();
+                data.fullTime = convertMillisToJalali(data.time)
+                const message = await SaveMessageClient(data,user);
 
                 // Set Last Message User List
                 this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
@@ -309,6 +315,12 @@ class ChatApplication {
                     this.io.to(key).emit('messageSound', user);
                 }
 
+                callback({
+                    success:true,
+                    message:"send",
+                    message:data
+                })
+
 
             }else{
                 const freeFirstOperator = getFreeOperators(this.onlineOperators,this.onlineUsers,user.merchantId)
@@ -317,6 +329,8 @@ class ChatApplication {
                     socketID:socket.id,
                     message:data.message
                 });
+                data.time = Date.now();
+                data.fullTime = convertMillisToJalali(data.time)
                 await SaveMessageClient(data,user);
 
                 // Set Last Message User List
@@ -327,6 +341,11 @@ class ChatApplication {
                     this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
                     this.io.to(key).emit('messageSound', user);
                 }
+                callback({
+                    success:true,
+                    message:"send",
+                    message:data
+                })
             }
 
         }
@@ -337,9 +356,14 @@ class ChatApplication {
     async handleSendMessageToUser(socket, data,callback){
         const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,data.sid)
         if (targetUser.id) {
+            data.time = Date.now();
+            data.fullTime = convertMillisToJalali(data.time)
             this.io.to(targetUser.id).emit('newMessageFromOperator', data);
         }
         try {
+            data.time = Date.now();
+            data.fullTime = convertMillisToJalali(data.time)
+
             await SaveMessageOperator(data,targetUser,false);
             // Set Last Message
             this.onlineUsers[targetUser.merchantId][data.sid]['lastMessage']= data?.message;
@@ -350,7 +374,7 @@ class ChatApplication {
             for (const key in operators) {
                 this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[targetUser.merchantId] || []));
             }
-            callback({success:true})
+            callback({success:true,message:data})
         } catch (error) {
             callback({success:false,message:error.message})
         }
@@ -429,8 +453,34 @@ class ChatApplication {
                     fullLink:`${process.env.LIARA_IMAGE_URL}${fileUpload}`,
                     socketID:socket.id
                 }
+
                 this.io.to(operatorSocketId).emit('newMessageFromUser', datanew);
                 await SaveMessageClient(datanew,user);
+
+                // Check target Operator 
+                if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+
+                    // Set Last Message User List
+                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                    // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
+                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
+                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                    for (const key in operators) {
+                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                        this.io.to(key).emit('messageSound', user);
+                    }
+
+                }else{
+                    // Set Last Message User List
+                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                    for (const key in operators) {
+                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                        this.io.to(key).emit('messageSound', user);
+                    }
+                }
+
                 callback({
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
@@ -440,16 +490,9 @@ class ChatApplication {
             }else{
                 callback({success:false,message:"خطا در آپلود فایل"})
             }
-            // const fileLink = await getFileLink(fileUpload)
 
-            
-            // if (filelink) {
-            //     console.log("File uploaded successfully:", filelink);
-            //     callback({ success: true, filelink });
-            // } else {
-            //     console.log("File upload failed");
-            //     callback({ success: false, message: "Upload failed" });
-            // }
+
+
         } catch (error) {
             console.log("Error during file upload:", error);
             // callback({ success: false, message: "Error during upload" });

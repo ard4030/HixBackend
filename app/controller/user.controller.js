@@ -108,7 +108,7 @@ class UserController{
                 });
                 res.status(SUCCESS).json({
                     success:true,
-                    data:data.isUser,
+                    data:isUser,
                     message:"با موفقیت وارد شدید!"
                 });
 
