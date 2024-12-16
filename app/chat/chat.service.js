@@ -15,7 +15,8 @@ const SaveMessageOperator = async (data,user,ai) => {
         data:data.data || [],
         isFile:false,
         link:data.link || "",
-        fullTime:data.fullTime
+        fullTime:data.fullTime,
+        fileName:data.fileName?data.fileName:""
     }
 
     const isChat = await ChatModel.findOne({sid:user.cookieId,merchantId:user.merchantId})
@@ -45,7 +46,8 @@ const SaveMessageClient = async (data,user) => {
         isFile:false,
         type:"",
         link:"",
-        fullTime:data.fullTime
+        fullTime:data.fullTime,
+        fileName:data.fileName?data.fileName:""
     }
 
     // Check Messages Type

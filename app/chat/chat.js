@@ -63,6 +63,7 @@ class ChatApplication {
             socket.on('join', (data, callback) => this.handleJoin(socket, data, callback));
             socket.on('userInfo', (userData,callback) => this.handleUserInfo(socket, userData,callback));
             socket.on('disconnect', () => this.handleDisconnect(socket));
+            socket.on('disconnectOperator', () => this.handleDisconnect(socket))
             socket.on('sendMessageToOperator', (data,callback) => this.handleSendMessageToOperator(socket, data , callback));
             socket.on('sendMessageToUser', (data,callback) => this.handleSendMessageToUser(socket, data,callback));
             socket.on("getMessages", (data, callback) => this.handleGetMessages(data, callback,socket));
@@ -459,8 +460,6 @@ class ChatApplication {
         try {
             // فایل را آپلود می‌کنیم
             const fileUpload = await uploadFile(data);
-            // console.log(data)
-            
 
             if(fileUpload){
                 let datanew = {
@@ -468,6 +467,7 @@ class ChatApplication {
                     link:fileUpload,
                     fullLink:`${process.env.LIARA_IMAGE_URL}${fileUpload}`,
                     socketID:socket.id,
+                    fileName:data.name
                 }
                 datanew.time = Date.now();
                 datanew.fullTime = convertMillisToJalali(data.time)
@@ -502,15 +502,14 @@ class ChatApplication {
                 callback({
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
-                    fileName:datanew.fullLink,
+                    fileName:datanew.fileName,
+                    fullLink:datanew.fullLink,
                     type:data.type,
                     fullTime:datanew.fullTime
                 })
             }else{
                 callback({success:false,message:"خطا در آپلود فایل"})
             }
-
-
 
         } catch (error) {
             console.log("Error during file upload:", error);
@@ -520,7 +519,7 @@ class ChatApplication {
 
     // Send File From Operator To Client
     async handleOperatorSendFile(socket, data, callback){
-        // console.log(data)
+        
         const user = getUserAndOperatorBySocketID(this.onlineUsers,data.socketID)
         // let operatorSocketId = Object.keys(onlineOperators[user.merchantId])[0];
         try {
@@ -531,7 +530,8 @@ class ChatApplication {
                 let datanew = {
                     type:data.type,
                     link:fileUpload,
-                    fullLink:`${process.env.LIARA_IMAGE_URL}${fileUpload}`
+                    fullLink:`${process.env.LIARA_IMAGE_URL}${fileUpload}`,
+                    fileName:data.name
                 }
                 datanew.time = Date.now();
                 datanew.fullTime = convertMillisToJalali(data.time)
@@ -539,17 +539,44 @@ class ChatApplication {
                 this.io.to(user.id).emit('newMessageFromOperator',{
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
-                    fileName:datanew.fullLink,
+                    fileName:datanew.fileName,
                     type:data.type,
+                    fullLink:datanew.fullLink,
                     fullTime:datanew.fullTime
                 });
                 await SaveMessageOperator(datanew,user);
+
+                // Check target Operator 
+                if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+
+                    // Set Last Message User List
+                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                    // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
+                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
+                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                    for (const key in operators) {
+                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                        this.io.to(key).emit('messageSound', user);
+                    }
+
+                }else{
+                    // Set Last Message User List
+                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                    for (const key in operators) {
+                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                        this.io.to(key).emit('messageSound', user);
+                    }
+                }
+
                 callback({
                     success:true,
                     message:"آپلود با موفقیت انجام شد",
-                    fileName:datanew.fullLink,
+                    fileName:datanew.fileName,
                     type:data.type,
-                    fullTime:datanew.fullTime
+                    fullTime:datanew.fullTime,
+                    fullLink:datanew.fullLink,
                 })
             }else{
                 callback({success:false,message:"خطا در آپلود فایل"})
