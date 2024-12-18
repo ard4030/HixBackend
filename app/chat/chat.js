@@ -132,6 +132,7 @@ class ChatApplication {
         const user = await UserModel.findOne({ apiKey });
         if (!user) {
             callback({code:0,message:'API Key نامعتبر است'})
+            return
         }
 
         // Check Auth User With CookieID
@@ -145,7 +146,7 @@ class ChatApplication {
                 callback({code:1,message:'لطفاً نام و ایمیل خود را وارد کنید:'})
             }
 
-            if (!this.onlineUsers[user._id]) {
+            if (!this.onlineUsers[user?._id]) {
                 this.onlineUsers[user._id] = {};
             }
 
