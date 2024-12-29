@@ -35,6 +35,41 @@ class OptionController{
         }
     }
 
+    async getAllOptions(req,res,next){
+        try {
+            const options = await OptionModel.findOne({merchantId:req.user._id});
+
+            return res.status(SUCCESS).json({
+                data:options,
+                success:true
+            })
+        } catch (error) {
+            return res.status(ERROR).json({
+                success:false,
+                message:error.message
+            })
+        }
+    }
+
+    async saveOptions(req,res,next){
+        try {
+            const data = req.body; 
+            const save = await OptionModel.updateOne({merchantId:req.user._id},{$set:{
+                options:data,
+            }});
+
+            return res.status(SUCCESS).json({
+                message:"تغییرات با موفقیت ذخیره شد",
+                success:true
+            })
+        } catch (error) {
+            return res.status(ERROR).json({
+                success:false,
+                message:error.message
+            })
+        }
+    }
+
 }
 
 module.exports = {

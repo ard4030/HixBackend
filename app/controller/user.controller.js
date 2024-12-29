@@ -74,7 +74,7 @@ class UserController{
                     secure:false,
                     httpOnly: false, // فقط برای دسترسی از سمت سرور
                     // secure: process.env.APP_STATUS === 'production', // فقط در HTTPS
-                    maxAge: 3600000 // زمان انقضای کوکی به میلی‌ثانیه
+                    maxAge: 1000 * 60 * 60 * 24 * 2 // زمان انقضای کوکی به میلی‌ثانیه
                 });
                 res.status(SUCCESS).json({
                     success:true,
@@ -104,7 +104,7 @@ class UserController{
                     secure:false,
                     httpOnly: true, // فقط برای دسترسی از سمت سرور
                     // secure: process.env.APP_STATUS === 'production', // فقط در HTTPS
-                    maxAge: 3600000 // زمان انقضای کوکی به میلی‌ثانیه
+                    maxAge: 1000 * 60 * 60 * 24 * 2 // زمان انقضای کوکی به میلی‌ثانیه
                 });
                 res.status(SUCCESS).json({
                     success:true,

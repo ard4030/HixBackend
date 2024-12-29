@@ -14,7 +14,7 @@ const Schema = new mongoose.Schema({
         expiresIn: 0,
         timeSend:0
     }},
-    Roles:{type:[String],default:["USER"]},
+    Roles:{type:[String],default:["USER","PRODUCT"]},
     apiKey:{type:String,default:""},
     planId:{type:mongoose.Types.ObjectId,default:null}
 },{

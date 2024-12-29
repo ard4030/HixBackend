@@ -56,14 +56,13 @@ const getCookie = (name,cookies) => {
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
-const generateUserChatToken = async (name,email,sid) => {
+const generateUserChatToken = async (userData,sid) => {
     const payload = {
-        name,
-        email,
+        userData,
         sid
     };
     const option = {
-        expiresIn : "3d"
+        expiresIn : "365d"
     };
     const finallJWT = await jwt.sign(payload,process.env.COOKIE_USER_CAHT_SECRET_KEY,option)
     return finallJWT;
@@ -185,18 +184,17 @@ const getFreeOperators = (operators,users,merchantId) => {
 
 const uploadFile = async (file) => {
     let str = file.name;
-    let rename = str.replace(/\s+/g, '');
+    let rename = str.replace(/\s+/g, ''); // حذف فضاهای اضافی از نام فایل
     let fileName = `${Date.now()}${rename}`;
+
+    // ایجاد مسیر پوشه و اضافه کردن آن به نام فایل
+    const folderPath = 'uploads/'; // پوشه‌ای که می‌خواهید فایل‌ها در آن ذخیره شوند
+    const filePath = folderPath + fileName; // مسیر کامل فایل داخل پوشه
 
     // تبدیل Base64 به باینری
     const buffer = Buffer.from(file.data, 'base64');
 
-    // نمایش داده‌ها به صورت باینری (یا می‌توانید داده‌ها را ذخیره کنید یا استفاده کنید)
-    // console.log(buffer);
-
-    // console.log(file.data)
-    // console.log(buffer) 
-
+    // تنظیمات اتصال به S3
     const client = new S3Client({
         region: "default",
         endpoint: process.env.LIARA_ENDPOINT,
@@ -205,32 +203,21 @@ const uploadFile = async (file) => {
             secretAccessKey: process.env.LIARA_SECRET_KEY
         },
     });
-    
+
+    // تنظیمات پارامترهای درخواست برای آپلود فایل
     const params = {
         Body: buffer,
         Bucket: process.env.LIARA_BUCKET_NAME,
-        Key: fileName,
+        Key: filePath, // ذخیره فایل در مسیر پوشه تعیین شده
     };
-    
+
+    // آپلود فایل به S3
     const result = await client.send(new PutObjectCommand(params));
-    // console.log(result)
-    return fileName
-    
-    // try {
-    //     // callback
-    //     client.send(new PutObjectCommand(params), async (error, data) => {
-    //         if (error) {
-    //         console.log("#2----",error);
-    //         return false
-    //         } else {
-    //         console.log("#3----",data);
-    //         return true
-    //         }
-    //     });
-    // } catch (error) {
-        
-    // }
+
+    // برگشت نام فایل به عنوان نتیجه
+    return filePath;
 }
+
 
 const getFileLink = async (fileName) => {
 

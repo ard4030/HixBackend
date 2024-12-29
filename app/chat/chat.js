@@ -11,6 +11,7 @@ const { UserModel } = require("../model/UserModel");
 const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./chat.service");
 const AI = require("./ai.service");
 const { ChatModel } = require("../model/ChatModel");
+const { OptionModel } = require("../model/Option");
 
 
 class ChatApplication {
@@ -59,7 +60,7 @@ class ChatApplication {
             // const socketIDCookie = getCookie("cookieToken", cookies);
             // const socketIDCookie = socket.handshake.auth.cookieId;
             // console.log(socketIDCookie)
-
+            socket.on('setting',(data, callback) => this.settings(socket, data, callback))
             socket.on('join', (data, callback) => this.handleJoin(socket, data, callback));
             socket.on('userInfo', (userData,callback) => this.handleUserInfo(socket, userData,callback));
             socket.on('disconnect', () => this.handleDisconnect(socket));
@@ -74,8 +75,19 @@ class ChatApplication {
         });
     }
 
-    
+    // Get Setting
+    async settings(socket, data, callback){
+        const { apiKey } = data;
+        const user = await UserModel.findOne({ apiKey });
+        if (!user) {
+            callback({success:false,code:0,message:'API Key نامعتبر است'})
+            return
+        }
 
+        const options = await OptionModel.findOne({merchantId:user._id}) 
+        callback({ success:true , data:options.options })
+    }
+    
     // Handle Join Operator Or User Or Client
     async handleJoin(socket, data, callback) {
         const { apiKey, isOperator , cookieId } = data;
@@ -139,7 +151,8 @@ class ChatApplication {
         if (!cookieId) {
             callback({code:1,message:'لطفاً نام و ایمیل خود را وارد کنید:'})
         } else {
-            const details = await verifyUserChatToken(cookieId)
+            const details = await verifyUserChatToken(cookieId);
+            console.log(details)
 
             //Expire Or No Cookie 
             if(!details){
@@ -151,8 +164,8 @@ class ChatApplication {
             }
 
             this.onlineUsers[user._id][socket.id] = {
-                name:details.name,
-                email:details.email,
+                userData:details.userData,
+                name:details.userData.name?details.userData.name:"مهمان",
                 id: socket.id ,
                 cookieId:details.sid,
                 merchantId:user._id,
@@ -169,7 +182,7 @@ class ChatApplication {
                 this.onlineUsers[user._id][socket.id]['lastMessageSeen']= false
             }
             
-            console.log(`User ${details.name} joined with email: ${details.email}`);
+            console.log(`User ${details.name?details.name:"مهمان"} joined`);
 
             // اینجا لیست اپراتور های مرچنت مورد نظر هست فعلا اتوماتیک به اپراتور اول پیام میره
             const merchantOperators = getOperatorsByMerchantId(this.onlineOperators,user._id)
@@ -204,14 +217,15 @@ class ChatApplication {
     // Handle Verification Client And Set Cookie Token
     async handleUserInfo(socket, userData , callback){
         // console.log("ali")
-        const { name, email } = userData;
-        if (!name || !email) {
-            callback({success:false,message:'نام و ایمیل نمی‌تواند خالی باشد'})
-            // return socket.emit('message', 'نام و ایمیل نمی‌تواند خالی باشد');
-        }
-        const newCookieToken = await generateUserChatToken(name,email,socket.id);
+        // const { name, email } = userData;
+        // if (!name || !email) {
+        //     callback({success:false,message:'نام و ایمیل نمی‌تواند خالی باشد'})
+        //     // return socket.emit('message', 'نام و ایمیل نمی‌تواند خالی باشد');
+        // }
+
+        // console.log(userData)
+        const newCookieToken = await generateUserChatToken(userData,socket.id);
         callback({success:true,token:newCookieToken})
-        // socket.emit("setCookie",newCookieToken)
     }
 
     // Handle Disconnect Operator Or Client
