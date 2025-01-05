@@ -40,7 +40,7 @@ const SaveMessageClient = async (data,user) => {
     const message = {
         id: new mongoose.Types.ObjectId,
         sender:"guest",
-        name:user.name,
+        name:user?.name?user?.name:"مهمان",
         seen:false,
         datatime:data.time,
         isFile:false,
@@ -69,6 +69,10 @@ const SaveMessageClient = async (data,user) => {
             message.type = data.type
             break;
         case "video/mp4":
+            message.link = data.link
+            message.type = data.type
+            break;
+        case "audio/wav":
             message.link = data.link
             message.type = data.type
             break;

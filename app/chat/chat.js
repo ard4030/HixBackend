@@ -5,7 +5,8 @@ const { getCookie, generateUserChatToken, verifyUserChatToken, getUserAndOperato
      getLockUser,
      getFreeOperators,
      getLastMessage,
-     convertMillisToJalali} = require("../utils/functions");
+     convertMillisToJalali,
+     uploadVoice} = require("../utils/functions");
 const { OperatorsModel } = require("../model/OperatorsModel");
 const { UserModel } = require("../model/UserModel");
 const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./chat.service");
@@ -66,6 +67,7 @@ class ChatApplication {
             socket.on('disconnect', () => this.handleDisconnect(socket));
             socket.on('disconnectOperator', () => this.handleDisconnect(socket))
             socket.on('sendMessageToOperator', (data,callback) => this.handleSendMessageToOperator(socket, data , callback));
+            socket.on('sendMessageToAI', (data,callback) => this.handleSendMessageToAI(socket, data , callback));
             socket.on('sendMessageToUser', (data,callback) => this.handleSendMessageToUser(socket, data,callback));
             socket.on("getMessages", (data, callback) => this.handleGetMessages(data, callback,socket));
             socket.on("qusetions", (data, callback) => this.handleGetQuestions(callback,data));
@@ -165,7 +167,7 @@ class ChatApplication {
 
             this.onlineUsers[user._id][socket.id] = {
                 userData:details.userData,
-                name:details.userData.name?details.userData.name:"مهمان",
+                name:details.userData?.name?details.userData?.name:"مهمان",
                 id: socket.id ,
                 cookieId:details.sid,
                 merchantId:user._id,
@@ -273,6 +275,35 @@ class ChatApplication {
 
     }
 
+    // Handle Send Message To AI
+    async handleSendMessageToAI(socket, data , callback){
+        const details = await verifyUserChatToken(data.cookieId)
+        const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
+
+        data.time = Date.now();
+        data.fullTime = convertMillisToJalali(data.time)
+
+        await SaveMessageClient(data,user,false)
+
+        callback({success:true,message:"send",message:data})
+
+        const ai = new AI(user.merchantId)
+        let finall = await ai.respondToMessage(data.message);
+        // finall = {
+        //     message:response,
+        //     type:Array(response)?"slider":"text",
+        //     data
+        // }
+        finall.fullTime = convertMillisToJalali(data.time);
+        await SaveMessageOperator(finall,user,true);
+        this.io.to(socket.id).emit('newMessageFromOperator', {
+            type:finall.type,
+            message:finall.message,
+            data:finall.data,
+            fullTime:data.fullTime
+        });
+    }
+
     // Handle Send Message From Client To Operator
     async handleSendMessageToOperator(socket, data , callback){
         const details = await verifyUserChatToken(data.cookieId)
@@ -282,17 +313,20 @@ class ChatApplication {
         if(data.ai){
             data.time = Date.now();
             data.fullTime = convertMillisToJalali(data.time)
+
             await SaveMessageClient(data,user,false)
             const ai = new AI(user.merchantId)
             let finall = await ai.respondToMessage(data.message);
             finall.fullTime = convertMillisToJalali(data.time)
+            callback({success:true,message:data})
+            await SaveMessageOperator(finall,user,true);
             this.io.to(socket.id).emit('newMessageFromOperator', {
                 type:finall.type,
                 message:finall.message,
                 data:finall.data,
                 fullTime:data.fullTime
             });
-            await SaveMessageOperator(finall,user,true);
+            
             
         // Check For Online Operators
         }else if(data.qs){
@@ -473,8 +507,10 @@ class ChatApplication {
         const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
         let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId])[0];
         try {
+            
             // فایل را آپلود می‌کنیم
             const fileUpload = await uploadFile(data);
+            // console.log(data)
 
             if(fileUpload){
                 let datanew = {

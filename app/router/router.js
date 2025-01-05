@@ -42,6 +42,7 @@ router.post("/questions/update",VerifyAuth,CheckAccess(['OPERATOR','USER']),Prep
 router.get("/questions/get",VerifyAuth,CheckAccess(['OPERATOR','USER']),PreparedMessages.getQuestions)
 
 
+
 module.exports = {
     AllRoutes : router
 }

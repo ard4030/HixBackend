@@ -209,6 +209,7 @@ const uploadFile = async (file) => {
         Body: buffer,
         Bucket: process.env.LIARA_BUCKET_NAME,
         Key: filePath, // ذخیره فایل در مسیر پوشه تعیین شده
+        ContentType: file.type,
     };
 
     // آپلود فایل به S3
@@ -217,6 +218,45 @@ const uploadFile = async (file) => {
     // برگشت نام فایل به عنوان نتیجه
     return filePath;
 }
+
+const uploadVoice = async (file) => {
+    // let str = file.name;
+    // let rename = str.replace(/\s+/g, '_'); // استفاده از _ به جای فضای خالی
+    let fileName = `${Date.now()}`;
+
+    // مسیر پوشه
+    const folderPath = 'uploads/';
+    const filePath = folderPath + fileName;
+
+    // اگر داده به صورت Blob است، نیازی به تبدیل به Base64 نیست.
+    const buffer = await file.arrayBuffer(); // تبدیل Blob به ArrayBuffer
+    const bufferData = Buffer.from(buffer); // تبدیل ArrayBuffer به Buffer
+
+    // تنظیمات S3
+    const client = new S3Client({
+        region: "default",
+        endpoint: process.env.LIARA_ENDPOINT || 'https://s3.us-west-1.amazonaws.com', // قرار دادن مقدار پیش‌فرض
+        credentials: {
+            accessKeyId: process.env.LIARA_ACCESS_KEY,
+            secretAccessKey: process.env.LIARA_SECRET_KEY,
+        },
+    });
+
+    // تنظیمات پارامترهای درخواست برای آپلود
+    const params = {
+        Body: bufferData, // ارسال داده‌های Blob به صورت Buffer
+        Bucket: process.env.LIARA_BUCKET_NAME,
+        Key: filePath, // مسیر کامل برای ذخیره
+    };
+
+    // آپلود فایل به S3
+    const result = await client.send(new PutObjectCommand(params));
+
+    // بازگشت نام فایل
+    return filePath;
+
+};
+
 
 
 const getFileLink = async (fileName) => {
@@ -244,22 +284,27 @@ const getFileLink = async (fileName) => {
 }
 
 const getLastMessage = (lastMessage) => {
-    switch (lastMessage.type) {
-        case "text":
-            return lastMessage.content
-        case "slider":
-            return "لیست محصولات"
-        case "image/jpeg":    
-            return "عکس"
-        case "application/x-zip-compressed": 
-            return "فایل"   
-        case "video/mp4":    
-            return "ویدیو"
-        case "application/pdf":  
-            return "سند"  
-        default:
-            return "پشتیبانی نمیشه";
+    if(lastMessage?.type){
+        switch (lastMessage.type) {
+            case "text":
+                return lastMessage.content
+            case "slider":
+                return "لیست محصولات"
+            case "image/jpeg":    
+                return "عکس"
+            case "application/x-zip-compressed": 
+                return "فایل"   
+            case "video/mp4":    
+                return "ویدیو"
+            case "application/pdf":  
+                return "سند"  
+            default:
+                return "پشتیبانی نمیشه";
+        }
+    }else{
+        return "پشتیبانی نمیشه";
     }
+    
 }
 
 const convertMillisToJalali = (millis) => {
@@ -319,5 +364,5 @@ module.exports = {
     generateApiKey,pushUnique,getCookie,generateUserChatToken,verifyUserChatToken,
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
-    convertMillisToJalali
+    convertMillisToJalali,uploadVoice
 }
