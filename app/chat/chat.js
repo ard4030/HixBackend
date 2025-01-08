@@ -13,6 +13,7 @@ const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./c
 const AI = require("./ai.service");
 const { ChatModel } = require("../model/ChatModel");
 const { OptionModel } = require("../model/Option");
+const { PreparedMessagesModel } = require("../model/PreparedMessages");
 
 
 class ChatApplication {
@@ -70,7 +71,7 @@ class ChatApplication {
             socket.on('sendMessageToAI', (data,callback) => this.handleSendMessageToAI(socket, data , callback));
             socket.on('sendMessageToUser', (data,callback) => this.handleSendMessageToUser(socket, data,callback));
             socket.on("getMessages", (data, callback) => this.handleGetMessages(data, callback,socket));
-            socket.on("qusetions", (data, callback) => this.handleGetQuestions(callback,data));
+            socket.on("qusetions", (data, callback) => this.handleGetQuestions(callback,data,socket));
             socket.on("clientSendFile", (data, callback) => this.handleClientSendFile(socket, data, callback));
             socket.on("operatorSendFile", (data, callback) => this.handleOperatorSendFile(socket, data, callback));
             socket.on('isTyping', (data) => this.handleIsTyping(socket, data));
@@ -191,6 +192,12 @@ class ChatApplication {
             const opSocketId = Object.keys(merchantOperators)[0]
             this.io.to(opSocketId).emit('updateUserList', Object.values(this.onlineUsers[user._id])); 
 
+            // Get Questions
+            const client = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+            const questions = await PreparedMessagesModel.find({merchantId:client.merchantId})
+
+            
+
             // دریافت پیام های قبلی
             const lastMessages = await getMessageBySid(details.sid);
             if(!this.onlineOperators[user._id] || Object.values(this.onlineOperators[user._id]).length < 1){
@@ -199,7 +206,8 @@ class ChatApplication {
                     code:2,
                     message:"Operators is Offline!",
                     data:lastMessages,
-                    user:details
+                    user:details,
+                    questions
                 })
             }else{
                 socket.emit("updateOperatorList",Object.values(merchantOperators))
@@ -208,7 +216,8 @@ class ChatApplication {
                     code:3,
                     message:"Ready",
                     data:lastMessages,
-                    user:details
+                    user:details,
+                    questions
                 })
             }
             
@@ -310,44 +319,44 @@ class ChatApplication {
         const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
         
         // Save Client Message
-        if(data.ai){
-            data.time = Date.now();
-            data.fullTime = convertMillisToJalali(data.time)
+        // if(data.ai){
+        //     data.time = Date.now();
+        //     data.fullTime = convertMillisToJalali(data.time)
 
-            await SaveMessageClient(data,user,false)
-            const ai = new AI(user.merchantId)
-            let finall = await ai.respondToMessage(data.message);
-            finall.fullTime = convertMillisToJalali(data.time)
-            callback({success:true,message:data})
-            await SaveMessageOperator(finall,user,true);
-            this.io.to(socket.id).emit('newMessageFromOperator', {
-                type:finall.type,
-                message:finall.message,
-                data:finall.data,
-                fullTime:data.fullTime
-            });
+        //     await SaveMessageClient(data,user,false)
+        //     const ai = new AI(user.merchantId)
+        //     let finall = await ai.respondToMessage(data.message);
+        //     finall.fullTime = convertMillisToJalali(data.time)
+        //     callback({success:true,message:data})
+        //     await SaveMessageOperator(finall,user,true);
+        //     this.io.to(socket.id).emit('newMessageFromOperator', {
+        //         type:finall.type,
+        //         message:finall.message,
+        //         data:finall.data,
+        //         fullTime:data.fullTime
+        //     });
             
             
-        // Check For Online Operators
-        }else if(data.qs){
-            let qss = [
-                {key:"1",value:"میتونی محصول رو مقایسه کنی؟",qs:"این محصول برای مقایسه است"},
-                {key:"2",value:"ارزونترین محصولتون چیه؟",qs:"این محصول قیمت مناسبی دارد"},
-                {key:"3",value:"چطور میتونم هیکس رو داشته باشم؟",qs:"این لیست محصولات است"},
-            ]
-            data.time = Date.now();
-            data.fullTime = convertMillisToJalali(data.time)
-            await SaveMessageClient(data,user,false)
-            await SaveMessageOperator(data,user,false);
-            this.io.to(socket.id).emit('newMessageFromOperator', {
-                type:"text",
-                message:data.item.key,
-                data:qss,
-                fullTime:data.fullTime
-            });
+        // // Check For Online Operators
+        // }else if(data.qs){
+        //     let qss = [
+        //         {key:"1",value:"میتونی محصول رو مقایسه کنی؟",qs:"این محصول برای مقایسه است"},
+        //         {key:"2",value:"ارزونترین محصولتون چیه؟",qs:"این محصول قیمت مناسبی دارد"},
+        //         {key:"3",value:"چطور میتونم هیکس رو داشته باشم؟",qs:"این لیست محصولات است"},
+        //     ]
+        //     data.time = Date.now();
+        //     data.fullTime = convertMillisToJalali(data.time)
+        //     await SaveMessageClient(data,user,false)
+        //     await SaveMessageOperator(data,user,false);
+        //     this.io.to(socket.id).emit('newMessageFromOperator', {
+        //         type:"text",
+        //         message:data.item.key,
+        //         data:qss,
+        //         fullTime:data.fullTime
+        //     });
 
-            return
-        }
+        //     return
+        // }
        
         // Check exist Operators
         if(user && this.onlineOperators[user.merchantId] && Object.values(this.onlineOperators?.[user.merchantId]).length > 0){
@@ -381,7 +390,6 @@ class ChatApplication {
                     message:"send",
                     message:data
                 })
-
 
             }else{
                 const freeFirstOperator = getFreeOperators(this.onlineOperators,this.onlineUsers,user.merchantId)
@@ -491,20 +499,18 @@ class ChatApplication {
     }
 
     // Get Questions 
-    async handleGetQuestions(callback,data){
-        const details = await verifyUserChatToken(data.cookieId);
-        let qss = [
-            {key:"1",value:"میتونی محصول رو مقایسه کنی؟",qs:"این محصول برای مقایسه است"},
-            {key:"2",value:"ارزونترین محصولتون چیه؟",qs:"این محصول قیمت مناسبی دارد"},
-            {key:"3",value:"چطور میتونم هیکس رو داشته باشم؟",qs:"این لیست محصولات است"},
-        ]
-        callback(qss)
+    async handleGetQuestions(callback,data,socket){
+        const client = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+        const questions = await PreparedMessagesModel.find({merchantId:client.merchantId})
+
+        callback(questions)
     }
 
     // Send File From Client To Operator
     async handleClientSendFile(socket, data, callback){
 
-        const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
+        const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+        if(!user) callback({success:false,message:"خطای سیستمی"})
         let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId])[0];
         try {
             

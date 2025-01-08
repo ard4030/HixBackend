@@ -13,8 +13,10 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
     "@aws-sdk/s3-request-presigner": "^3.693.0",
+    "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
+    "cheerio": "^1.0.0",
     "connect-mongo": "^5.1.0",
     "connect-mongodb-session": "^5.0.0",
     "cookie-parser": "^1.4.7",
@@ -27,6 +29,7 @@
     "moment-jalaali": "^0.10.4",
     "mongoose": "^8.8.0",
     "openai": "^4.72.0",
+    "p-limit": "^6.2.0",
     "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",

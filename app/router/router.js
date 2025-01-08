@@ -4,6 +4,7 @@ const { PlanController } = require("../controller/plan.controller");
 const { PreparedMessages } = require("../controller/preparedMessages.controller");
 const { ProductController } = require("../controller/product.controller");
 const { UserController } = require("../controller/user.controller");
+const { CrawlerController } = require("../controller/crawler.controller");
 const { CheckAccess } = require("../middleware/CheckAccess");
 const { VerifyAuth } = require("../middleware/VerifyAccessToken");
 
@@ -41,6 +42,10 @@ router.post("/questions/delete",VerifyAuth,CheckAccess(['OPERATOR','USER']),Prep
 router.post("/questions/update",VerifyAuth,CheckAccess(['OPERATOR','USER']),PreparedMessages.updateQuestion)
 router.get("/questions/get",VerifyAuth,CheckAccess(['OPERATOR','USER']),PreparedMessages.getQuestions)
 
+// Crawler
+router.post("/crawler/crawl",CrawlerController.crawlSitemap)
+router.post("/crawler/crawlSingle",CrawlerController.crowlSingleProduct)
+router.post("/crawler/crowlAllProducts",CrawlerController.crowlAllProducts)
 
 
 module.exports = {

@@ -3,6 +3,9 @@ const jwt = require("jsonwebtoken");
 const { S3Client, PutObjectCommand , GetObjectCommand  } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const moment = require('moment-jalaali');
+const { default: axios } = require('axios');
+const cheerio = require('cheerio');
+
 // require('dotenv').config();
 
 const hashPassword = async (pass) => {
@@ -257,8 +260,6 @@ const uploadVoice = async (file) => {
 
 };
 
-
-
 const getFileLink = async (fileName) => {
 
     const client = new S3Client({
@@ -358,11 +359,125 @@ const getMonthName = (month) => {
     }
 }
 
+// تابع برای کرال کردن اطلاعات صفحه محصول
+const crawlProductPage = async (productUrl) => {
+        try {
+            // ارسال درخواست به صفحه محصول
+            const { data } = await axios.get(productUrl);
+
+            // بارگذاری داده‌های HTML با cheerio
+            const $ = cheerio.load(data);
+
+            // استخراج اطلاعات محصول
+            const title = $('h1.pdp-title-fa').text().trim();  // عنوان محصول
+            const price = $('span.actual-price').text().trim();       // قیمت محصول
+            const description = $('h2.pdp-title-en').text().trim(); // توضیحات محصول
+            const image = $('div.sample-big-image-pdp img').attr('src');
+
+            // چاپ اطلاعات استخراج شده
+            console.log('Title:', title);
+            console.log('Price:', price);
+            console.log('Description:', description);
+
+            // برگرداندن اطلاعات به صورت شیء
+            return {
+                title,
+                price,
+                description,
+                image,
+            };
+        } catch (error) {
+            console.error('Error fetching product page:', error);
+        }
+}
+
+const getUrlsMultiSitemap = async (sitemap,format) => {
+    const response = await axios.get(sitemap);
+    
+    const $ = cheerio.load(response.data);
+    const urls = [];
+
+    // استخراج لینک‌ها از سایت‌مپ (فرض بر این است که سایت‌مپ XML است)
+    $(format).each((i, element) => {
+        const url = $(element).text();
+        urls.push(url);
+    });
+
+    return urls
+}
+
+const getAllProductUrlsFromSitemaps = async (sitemaps, format) => {
+    let urls = [];
+    
+    // استفاده از map و Promise.all برای همزمان پردازش کردن تمام سابت‌مپ‌ها
+    await Promise.all(sitemaps.map(async (element) => {
+        const response = await axios.get(element);
+        const $ = cheerio.load(response.data);
+        
+        // پردازش لینک‌ها
+        $(format).each(async (i, element1) => {
+            const url = $(element1).text();
+            urls.push(url);
+        });
+    }));
+
+    return urls;
+}
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getProductsDataCrawler = async (
+    productsUrls,
+    titleSelector,
+    categorySelector,
+    descriptionSelector,
+    imageSelector,
+    priceSelector,
+    baseUrlImage,
+    limit,
+    limitTimeRequest
+) => {
+    try {
+        let products = [];
+        const limitimg = limit === 0 ? productsUrls.length:limit
+        // productsUrls.length
+        for (let i = 0; i < limitimg; i++) {
+            const element = productsUrls[i];
+            const { data } = await axios.get(element);
+            const $ = cheerio.load(data);
+
+            const title = $(titleSelector).text().trim();  // عنوان محصول
+            const price = $(priceSelector).text().trim();       // قیمت محصول
+            const description = $(descriptionSelector).text().trim(); // توضیحات محصول
+            const image = $(imageSelector).attr('src');
+            console.log(title)
+            if (title) {
+                products.push({
+                    title,
+                    price,
+                    description,
+                    image:baseUrlImage?`${baseUrlImage}${image}`:image,
+                });
+            }
+
+            // اضافه کردن تاخیر بین درخواست‌ها
+            await sleep(limitTimeRequest * 1000);  // مثلا 1 ثانیه
+        }
+
+        return products;
+    } catch (error) {
+        console.error('Error fetching product page:', error);
+    }
+};
+
+
+
 
 module.exports = {
     hashPassword,unhashPassword,SignAccessToken,verifyJwtToken,
     generateApiKey,pushUnique,getCookie,generateUserChatToken,verifyUserChatToken,
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
-    convertMillisToJalali,uploadVoice
+    convertMillisToJalali,uploadVoice,crawlProductPage,getUrlsMultiSitemap,getAllProductUrlsFromSitemaps,
+    getProductsDataCrawler
 }
