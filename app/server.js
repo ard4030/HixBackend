@@ -29,7 +29,8 @@ module.exports = class Application{
                 "http://localhost:3000",
                 "http://localhost:3200",
                 "http://127.0.0.1:5500",
-                "https://hixnew.liara.run"
+                "https://hixnew.liara.run",
+                "http://localhost:5173"
             ],
         }));
 

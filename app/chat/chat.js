@@ -38,7 +38,8 @@ class ChatApplication {
                     "http://localhost:3000",
                     "http://127.0.0.1:5500",
                     "https://hix-operator.vercel.app",
-                    "https://hixnew.liara.run"
+                    "https://hixnew.liara.run",
+                    "http://localhost:5173"
                 ],
                 credentials: true
             },
@@ -150,16 +151,26 @@ class ChatApplication {
             return
         }
 
+        const options = await OptionModel.findOne({merchantId:user._id}) 
+
         // Check Auth User With CookieID
         if (!cookieId) {
-            callback({code:1,message:'لطفاً نام و ایمیل خود را وارد کنید:'})
+            callback({
+                code:1,
+                showform:options.options.showform,
+                fields:options.options.fields
+            })
         } else {
             const details = await verifyUserChatToken(cookieId);
             console.log(details)
 
             //Expire Or No Cookie 
             if(!details){
-                callback({code:1,message:'لطفاً نام و ایمیل خود را وارد کنید:'})
+                callback({
+                    code:1,
+                    showform:options.options.showform,
+                    fields:options.options.fields
+                })
             }
 
             if (!this.onlineUsers[user?._id]) {
@@ -420,6 +431,8 @@ class ChatApplication {
                 })
             }
 
+        }else{
+            this.handleSendMessageToAI(socket, data , callback)
         }
 
     }
