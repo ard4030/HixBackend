@@ -14,6 +14,7 @@ const AI = require("./ai.service");
 const { ChatModel } = require("../model/ChatModel");
 const { OptionModel } = require("../model/Option");
 const { PreparedMessagesModel } = require("../model/PreparedMessages");
+const {PlanModel} = require("../model/PlanModel");
 
 
 class ChatApplication {
@@ -146,31 +147,33 @@ class ChatApplication {
     async handleUserJoin(socket, apiKey, callback, cookieId) {
         // Check User Api Key
         const user = await UserModel.findOne({ apiKey });
+        console.log(apiKey)
         if (!user) {
             callback({code:0,message:'API Key نامعتبر است'})
             return
         }
-
+        
         const options = await OptionModel.findOne({merchantId:user._id}) 
 
         // Check Auth User With CookieID
         if (!cookieId) {
             callback({
                 code:1,
-                showform:options.options.showform,
-                fields:options.options.fields
+                showform:options?.options?.showform,
+                fields:options?.options?.fields
             })
+            return
         } else {
             const details = await verifyUserChatToken(cookieId);
-            console.log(details)
 
             //Expire Or No Cookie 
             if(!details){
                 callback({
                     code:1,
-                    showform:options.options.showform,
-                    fields:options.options.fields
+                    showform:options?.options?.showform,
+                    fields:options?.options?.fields
                 })
+                return
             }
 
             if (!this.onlineUsers[user?._id]) {
@@ -220,6 +223,7 @@ class ChatApplication {
                     user:details,
                     questions
                 })
+                
             }else{
                 socket.emit("updateOperatorList",Object.values(merchantOperators))
                 // کد 3 یعنی اپراتور آنلاینه
@@ -230,22 +234,15 @@ class ChatApplication {
                     user:details,
                     questions
                 })
+                
             }
-            
             this.userToOperatorMap[socket.id] = null;  
         }   
     }
 
     // Handle Verification Client And Set Cookie Token
     async handleUserInfo(socket, userData , callback){
-        // console.log("ali")
-        // const { name, email } = userData;
-        // if (!name || !email) {
-        //     callback({success:false,message:'نام و ایمیل نمی‌تواند خالی باشد'})
-        //     // return socket.emit('message', 'نام و ایمیل نمی‌تواند خالی باشد');
-        // }
 
-        // console.log(userData)
         const newCookieToken = await generateUserChatToken(userData,socket.id);
         callback({success:true,token:newCookieToken})
     }
@@ -307,6 +304,9 @@ class ChatApplication {
 
         callback({success:true,message:"send",message:data})
 
+        // Check Ai Plan
+        // const plan = await PlanModel.findOne({_id:user.planId})
+
         const ai = new AI(user.merchantId)
         let finall = await ai.respondToMessage(data.message);
         // finall = {
@@ -320,7 +320,8 @@ class ChatApplication {
             type:finall.type,
             message:finall.message,
             data:finall.data,
-            fullTime:data.fullTime
+            fullTime:data.fullTime,
+            sender:"ai"
         });
     }
 
@@ -328,6 +329,8 @@ class ChatApplication {
     async handleSendMessageToOperator(socket, data , callback){
         const details = await verifyUserChatToken(data.cookieId)
         const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
+        // console.log(this.onlineUsers)
+        // console.log(socket.id)
         
         // Save Client Message
         // if(data.ai){
@@ -524,7 +527,8 @@ class ChatApplication {
 
         const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
         if(!user) callback({success:false,message:"خطای سیستمی"})
-        let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId])[0];
+            
+        // let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId]).length > 0 ? Object.keys(this.onlineOperators[user.merchantId])[0]:null;
         try {
             
             // فایل را آپلود می‌کنیم
@@ -542,7 +546,7 @@ class ChatApplication {
                 datanew.time = Date.now();
                 datanew.fullTime = convertMillisToJalali(data.time)
 
-                this.io.to(operatorSocketId).emit('newMessageFromUser', datanew);
+                this.io.to(user.targetOperator).emit('newMessageFromUser', datanew);
                 await SaveMessageClient(datanew,user);
 
                 // Check target Operator 
