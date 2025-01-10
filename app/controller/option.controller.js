@@ -54,9 +54,18 @@ class OptionController{
     async saveOptions(req,res,next){
         try {
             const data = req.body; 
-            const save = await OptionModel.updateOne({merchantId:req.user._id},{$set:{
-                options:data,
-            }});
+            const isOption = await OptionModel.findOne({merchantId:req.user._id});
+            if(isOption){
+                await OptionModel.updateOne({merchantId:req.user._id},{$set:{
+                    options:data,
+                }});
+            }else{
+                await OptionModel.create({
+                    options:data,
+                    merchantId:req.user._id
+                })
+            }
+
 
             return res.status(SUCCESS).json({
                 message:"تغییرات با موفقیت ذخیره شد",
