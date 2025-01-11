@@ -371,6 +371,35 @@ class ChatApplication {
 
         //     return
         // }
+
+        if(data.qs){
+                data.time = Date.now();
+                data.fullTime = convertMillisToJalali(data.time)
+                await SaveMessageClient(data,user,false)
+                await SaveMessageOperator(data,user,false);
+                // this.io.to(socket.id).emit('newMessageFromOperator', {
+                //     type:"text",
+                //     message:data.item.key,
+                //     fullTime:data.fullTime
+                // });
+
+                this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
+                // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
+                this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
+                const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                for (const key in operators) {
+                    this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                    this.io.to(key).emit('messageSound', user);
+                }
+
+                callback({
+                    success:true,
+                    message:"send",
+                    data:data
+                })
+    
+                return
+        }
        
         // Check exist Operators
         if(user && this.onlineOperators[user.merchantId] && Object.values(this.onlineOperators?.[user.merchantId]).length > 0){
@@ -665,7 +694,7 @@ class ChatApplication {
 
     async handleIsTyping(socket, data){
         const { isTyping, userType,socketID } = data; // isTyping (true/false), userType ('user' or 'operator')
-        
+
         let user;
         if(userType === "operator"){
             this.io.to(socketID).emit('isTyping', { isTyping });

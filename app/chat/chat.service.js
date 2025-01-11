@@ -10,7 +10,7 @@ const SaveMessageOperator = async (data,user,ai) => {
         sender:ai?"ai": data.qs? "qs" :"operator",
         seen:false,
         datatime:data.time,
-        content:data.qs?data.item.key:data.message,
+        content:data.qs?data.item.value:data.message,
         isFile:false,
         data:data.data || [],
         isFile:false,
@@ -47,13 +47,14 @@ const SaveMessageClient = async (data,user) => {
         type:"",
         link:"",
         fullTime:data.fullTime,
-        fileName:data.fileName?data.fileName:""
+        fileName:data.fileName?data.fileName:"",
+        content:data.qs?data.item.key:data.message,
     }
 
     // Check Messages Type
     switch (data.type) {
         case "text":
-            message.content = data.qs?data.item.value:data.message
+            message.content = data.qs?data.item.key:data.message
             message.type = data.type
             break;
         case "image/jpeg":
