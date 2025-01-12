@@ -9,6 +9,7 @@ class UserController{
     async addUser(req,res,next){
         const data = req.body;
 
+        // console.log(data)
         try {
             // Validation Data
             const validation = RegisterValidation(data)

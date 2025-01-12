@@ -70,8 +70,13 @@ module.exports = class AI {
 
                     response = completion.choices[0].message.content;
                 } catch (error) {
-                    console.error("Error with OpenAI API:", error);
-                    response = {type:'text',message:"متاسفانه مشکلی پیش آمد. لطفا دوباره تلاش کنید.",data:[]}
+                    // console.error("Error with OpenAI API:", error);
+                    response = {
+                        type:'text',
+                        message:"متاسفانه مشکلی پیش آمد. لطفا دوباره تلاش کنید.",
+                        data:[],
+                        success:false
+                    }
                     return response
                 }
             }
@@ -84,7 +89,12 @@ module.exports = class AI {
             }
             
         } catch (error) {
-            return {type:"text",message:"مشکلی پیش آمده",data:[]} 
+            return {
+                success:false,
+                type:"text",
+                message:"مشکلی پیش آمده",
+                data:[]
+            } 
         }
         
         

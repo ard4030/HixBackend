@@ -6,7 +6,8 @@ const { getCookie, generateUserChatToken, verifyUserChatToken, getUserAndOperato
      getFreeOperators,
      getLastMessage,
      convertMillisToJalali,
-     uploadVoice} = require("../utils/functions");
+     uploadVoice,
+     getPlan} = require("../utils/functions");
 const { OperatorsModel } = require("../model/OperatorsModel");
 const { UserModel } = require("../model/UserModel");
 const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./chat.service");
@@ -307,22 +308,25 @@ class ChatApplication {
         // Check Ai Plan
         // const plan = await PlanModel.findOne({_id:user.planId})
 
-        const ai = new AI(user.merchantId)
-        let finall = await ai.respondToMessage(data.message);
-        // finall = {
-        //     message:response,
-        //     type:Array(response)?"slider":"text",
-        //     data
-        // }
-        finall.fullTime = convertMillisToJalali(data.time);
-        await SaveMessageOperator(finall,user,true);
-        this.io.to(socket.id).emit('newMessageFromOperator', {
-            type:finall.type,
-            message:finall.message,
-            data:finall.data,
-            fullTime:data.fullTime,
-            sender:"ai"
-        });
+        // Check Ai True In Plan
+        const plan = await getPlan(user.merchantId)
+        if(plan.intelligentInteractionWithUsers){
+            const ai = new AI(user.merchantId)
+            let finall = await ai.respondToMessage(data.message);
+            if(finall.success){
+                finall.fullTime = convertMillisToJalali(data.time);
+                await SaveMessageOperator(finall,user,true);
+                this.io.to(socket.id).emit('newMessageFromOperator', {
+                    type:finall.type,
+                    message:finall.message,
+                    data:finall.data,
+                    fullTime:data.fullTime,
+                    sender:"ai"
+                });
+            }
+        }
+
+
     }
 
     // Handle Send Message From Client To Operator

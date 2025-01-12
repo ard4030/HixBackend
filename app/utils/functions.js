@@ -5,6 +5,8 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const moment = require('moment-jalaali');
 const { default: axios } = require('axios');
 const cheerio = require('cheerio');
+const { PlanModel } = require('../model/PlanModel');
+const { UserModel } = require('../model/UserModel');
 
 // require('dotenv').config();
 
@@ -471,6 +473,13 @@ const getProductsDataCrawler = async (
 };
 
 
+const getPlan = async (merchantId) => {
+    const user = await UserModel.findOne({_id:merchantId})
+    const plan = await PlanModel.findOne({_id:user.planId});
+    return plan
+}
+
+
 
 
 module.exports = {
@@ -479,5 +488,5 @@ module.exports = {
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
     convertMillisToJalali,uploadVoice,crawlProductPage,getUrlsMultiSitemap,getAllProductUrlsFromSitemaps,
-    getProductsDataCrawler
+    getProductsDataCrawler,getPlan
 }

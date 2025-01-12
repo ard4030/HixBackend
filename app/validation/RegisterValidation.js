@@ -12,8 +12,8 @@ const RegisterValidation = (data) => {
     //     error.password = "لطفا پسورد را وارد کنید"
     // }
 
-    if(data?.userName?.length < 3 || data?.userName?.length > 15){
-        error.userName = "نام کاربری باید حداقل 3 و حداکثر 15 کاراکتر باشد"
+    if(data?.userName?.length < 3 || data?.userName?.length > 45){
+        error.userName = "نام کاربری باید حداقل 3 و حداکثر 45 کاراکتر باشد"
     }
 
     if(String(data.password).length < 5 || String(data.password).length > 16){
