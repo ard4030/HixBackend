@@ -16,7 +16,8 @@ const Schema = new mongoose.Schema({
     }},
     Roles:{type:[String],default:["USER","PRODUCT"]},
     apiKey:{type:String,default:""},
-    planId:{type:mongoose.Types.ObjectId,default:null}
+    planId:{type:mongoose.Types.ObjectId,default:null},
+    expirePlan:{type:Number,default:0}
 },{
     timestamps : true
 });

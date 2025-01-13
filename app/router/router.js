@@ -21,6 +21,9 @@ router.get("/user/getoperators",VerifyAuth,UserController.getOperators)
 // Plan
 router.post("/plan/add",VerifyAuth,CheckAccess(['SUPER_ADMIN']),PlanController.addPlan)
 router.get("/plan/get",VerifyAuth,PlanController.getPlans)
+router.post("/plan/setPlan",VerifyAuth,PlanController.setPlan)
+
+
 
 // Operator
 router.post("/operator/add",VerifyAuth,CheckAccess(['USER']),OperatorController.addOperator)

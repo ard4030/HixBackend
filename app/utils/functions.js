@@ -7,6 +7,7 @@ const { default: axios } = require('axios');
 const cheerio = require('cheerio');
 const { PlanModel } = require('../model/PlanModel');
 const { UserModel } = require('../model/UserModel');
+const Zibal = require('zibal');
 
 // require('dotenv').config();
 
@@ -479,6 +480,36 @@ const getPlan = async (merchantId) => {
     return plan
 }
 
+const checkExpirePlan = (plan , user) => {
+    const now = Date.now();
+    const exp = user.expirePlan;
+
+    if(Number(now) > Number(exp)){
+
+        // Expired!!
+        return true
+    }else{
+
+        // Not Expire
+        return false
+    }
+}
+
+const sendReqZibal = () => {
+    const data = {
+        merchant:process.env.MERCHANT_ID,
+        callbackUrl:process.env.CALLBACKURL,
+        amount:5000,
+        logLevel:0
+    }
+
+    axios.post('https://gateway.zibal.ir/v1/request',data).then(res => {
+        console.log(res.data)
+    }).catch(res => {
+
+    })
+}
+
 
 
 
@@ -488,5 +519,5 @@ module.exports = {
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
     convertMillisToJalali,uploadVoice,crawlProductPage,getUrlsMultiSitemap,getAllProductUrlsFromSitemaps,
-    getProductsDataCrawler,getPlan
+    getProductsDataCrawler,getPlan,checkExpirePlan,sendReqZibal
 }

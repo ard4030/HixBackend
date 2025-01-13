@@ -1,5 +1,8 @@
 const { ERROR, SUCCESS } = require("../utils/constants")
 const { PlanModel } = require("../model/PlanModel");
+const { checkExpirePlan, generateApiKey, sendReqZibal } = require("../utils/functions");
+const { UserModel } = require("../model/UserModel");
+const { Zibal } = require("../utils/Zibal");
 
 class PlanController{
 
@@ -114,6 +117,62 @@ class PlanController{
                 success:false,
                 message:error.message,
             })
+        }
+    }
+
+    async setPlan(req,res,next){
+        try {
+            const {id} = req.body;
+            const Plan = await PlanModel.findOne({_id:id});
+
+            // Check Last User Plan
+            if(req.user.planId){
+                const expired = checkExpirePlan(req.user,Plan)
+                if(String(Plan._id) === String(req.user.planId)) throw new Error("شما قبلا این پلن را انتخاب کردید")
+            }
+
+            // Check Exist Plan
+            if(!Plan) throw new Error("پلن مورد نظر وجود ندارد");
+
+            // Set Free Plan
+            if(Plan.price === 0){
+                const updateFreeUserPlan = await UserModel.updateOne({_id:req.user._id},{$set:{
+                    planId:Plan._id,
+                    apiKey:generateApiKey()
+                }})
+                return res.status(SUCCESS).json({
+                    success:true,
+                    message:"پلن شما با موفقیت انتخاب شد"
+                })
+            }
+
+
+            // Set Price Plan
+            const now = Date.now();
+            let exp = 0
+            if(Plan.expireMonth !== 0){
+                exp = (60 * 60 * 60 * 24 * 30 * Plan.expireMonth) + now
+            }
+            
+            const addUserPlan = await UserModel.updateOne({_id:req.user._id},{$set:{
+                planId:Plan._id,
+                apiKey:generateApiKey(),
+                expirePlan:exp
+
+            }})
+            return res.status(SUCCESS).json({
+                success:true,
+                message:"پلن شما با موفقیت انتخاب شد"
+            })
+
+            // After Verify Domain
+            // sendReqZibal()
+
+        } catch (error) {
+            return res.status(ERROR).json({
+                success:false,
+                message:error.message,
+            }) 
         }
     }
 
