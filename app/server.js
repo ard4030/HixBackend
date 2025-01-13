@@ -6,6 +6,7 @@ const cors = require("cors");
 const { AllRoutes } = require("./router/router");
 const ChatApplication = require("./chat/chat");
 const bodyParser = require("body-parser");
+const { AllowedSiteModel } = require("./model/AllowedSiteModel");
 
 module.exports = class Application{
     #express = require("express");
@@ -18,21 +19,43 @@ module.exports = class Application{
         this.errorHandler()
     }
 
+
     configApplication(){
         this.#app.use(bodyParser())
         this.#app.use(cookieParser());
         this.#app.use(cors({
-            credentials: true,
-            origin: [
-                "https://hix-operator.vercel.app",
-                "http://localhost:5500",
-                "http://localhost:3000",
-                "http://localhost:3200",
-                "http://127.0.0.1:5500",
-                "https://hixnew.liara.run",
-                "http://localhost:5173"
-            ],
+            // credentials: true,
+            // origin: [
+            //     "http://localhost:5500",
+            //     "http://localhost:3000",
+            //     "http://localhost:3001",
+            //     "http://127.0.0.1:5500",
+            //     "http://127.0.0.1:5502",
+            //     "https://hix-operator.vercel.app",
+            //     "https://hixnew.liara.run",
+            //     "http://localhost:5173",
+            //     "https://hix-operator-6h2z.vercel.app"
+            // ],
+            origin: "*"
         }));
+
+           
+        // AllowedSiteModel.find({ isActive: true }) 
+        // .then(sites => {
+        //     const allowedOrigins = sites.map(site => site.url);  
+        //     console.log(allowedOrigins)
+        //     this.#app.use(cors({
+        //         credentials: true,
+        //         origin: allowedOrigins,  
+        //     }));
+        // })
+        // .catch(err => {
+        //     console.error("Error fetching allowed sites:", err);
+        //     this.#app.use(cors({
+        //         credentials: false,
+        //         origin: "*",  
+        //     }));
+        // });
 
         this.#app.use(this.#express.static(path.join(__dirname, "..")));
         this.#app.use(this.#express.json({limit: '50mb'}));
@@ -90,5 +113,7 @@ module.exports = class Application{
         //     }
         // })
     }
+
+    
 
 }

@@ -36,6 +36,7 @@ const Schema = new mongoose.Schema({
     intelligentInteractionWithUsers:{type:Boolean,default:false},//تعامل هوشمند با کاربران
     advice:{type:Boolean,default:false},//مشاوره به کاربران با توجه به اطلاعات وبسایت
     keepingConversationHistory:{type:Number,default:0},//نگهداری تاریخچه‌ ‌مکالمات
+    price:{type:Number,default:0}
 },{
     timestamps:true
 })

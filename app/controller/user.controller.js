@@ -71,16 +71,17 @@ class UserController{
         
                 const finallToken = await SignAccessToken(isOpertor);
     
-                res.cookie('authToken', finallToken, {
-                    secure:false,
-                    httpOnly: false, // فقط برای دسترسی از سمت سرور
-                    // secure: process.env.APP_STATUS === 'production', // فقط در HTTPS
-                    maxAge: 1000 * 60 * 60 * 24 * 2 // زمان انقضای کوکی به میلی‌ثانیه
-                });
+                // res.cookie('authToken', finallToken, {
+                //     secure:false,
+                //     httpOnly: false, // فقط برای دسترسی از سمت سرور
+                //     // secure: process.env.APP_STATUS === 'production', // فقط در HTTPS
+                //     maxAge: 1000 * 60 * 60 * 24 * 2 // زمان انقضای کوکی به میلی‌ثانیه
+                // });
                 res.status(SUCCESS).json({
                     success:true,
                     data:isOpertor,
-                    message:"با موفقیت وارد شدید!"
+                    message:"با موفقیت وارد شدید!",
+                    token:finallToken
                 });
             }else{
 
@@ -101,16 +102,17 @@ class UserController{
                 }
                 const finallToken = await SignAccessToken(isUser);
 
-                res.cookie('authToken', finallToken, {
-                    secure:false,
-                    httpOnly: true, // فقط برای دسترسی از سمت سرور
-                    // secure: process.env.APP_STATUS === 'production', // فقط در HTTPS
-                    maxAge: 1000 * 60 * 60 * 24 * 2 // زمان انقضای کوکی به میلی‌ثانیه
-                });
+                // res.cookie('authToken', finallToken, {
+                //     secure:false,
+                //     httpOnly: true, // فقط برای دسترسی از سمت سرور
+                //     // secure: process.env.APP_STATUS === 'production', // فقط در HTTPS
+                //     maxAge: 1000 * 60 * 60 * 24 * 2 // زمان انقضای کوکی به میلی‌ثانیه
+                // });
                 res.status(SUCCESS).json({
                     success:true,
                     data:isUser,
-                    message:"با موفقیت وارد شدید!"
+                    message:"با موفقیت وارد شدید!",
+                    token:finallToken
                 });
 
                 // return res.status(200).json({

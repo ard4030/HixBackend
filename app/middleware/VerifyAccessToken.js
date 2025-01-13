@@ -4,7 +4,12 @@ const { UNAUTH } = require("../utils/constants");
 const jwt = require("jsonwebtoken");
 
 const VerifyAuth = (req, res, next) => {
-    const token = req.cookies.authToken;
+    // with Coockie
+    // const token = req.cookies.authToken;
+
+    // with Token
+    const token = req.headers.token;
+
     if (!token) {
         return res.status(UNAUTH).json({
             success:false,

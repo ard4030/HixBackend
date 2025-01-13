@@ -16,6 +16,7 @@ const { ChatModel } = require("../model/ChatModel");
 const { OptionModel } = require("../model/Option");
 const { PreparedMessagesModel } = require("../model/PreparedMessages");
 const {PlanModel} = require("../model/PlanModel");
+const { AllowedSiteModel } = require("../model/AllowedSiteModel");
 
 
 class ChatApplication {
@@ -33,17 +34,32 @@ class ChatApplication {
 
     // Set Socket Options
     getSocketOptions() {
+        
+        let allsites = [];
+        // AllowedSiteModel.find({ isActive: true })  // فقط سایت‌های فعال را انتخاب می‌کنیم
+        // .then(sites => {
+        //     allsites = sites.map(site => site.url);  // استخراج URL سایت‌های مجاز
+        // })
+        // .catch(err => {
+        //     allsites = [];
+        // });
         return {
             cors: {
-                origin: [
-                    "http://localhost:5500",
-                    "http://localhost:3000",
-                    "http://127.0.0.1:5500",
-                    "https://hix-operator.vercel.app",
-                    "https://hixnew.liara.run",
-                    "http://localhost:5173"
-                ],
-                credentials: true
+                // origin: [
+                //     "http://localhost:5500",
+                //     "http://localhost:3000",
+                //     "http://localhost:3001",
+                //     "http://127.0.0.1:5500",
+                //     "http://127.0.0.1:5502",
+                //     "https://hix-operator.vercel.app",
+                //     "https://hixnew.liara.run",
+                //     "http://localhost:5173",
+                //     "https://hix-operator-6h2z.vercel.app",
+                //     "http://localhost:5502"
+                // ],
+                // origin: allsites,
+                origin: "*",
+                // credentials: true
             },
             transports: ["websocket", "polling"],
             connectionStateRecovery: {

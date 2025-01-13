@@ -23,7 +23,7 @@ router.post("/plan/add",VerifyAuth,CheckAccess(['SUPER_ADMIN']),PlanController.a
 router.get("/plan/get",VerifyAuth,PlanController.getPlans)
 
 // Operator
-router.post("/operator/add",VerifyAuth,CheckAccess(['ADD_OPERATOR']),OperatorController.addOperator)
+router.post("/operator/add",VerifyAuth,CheckAccess(['USER']),OperatorController.addOperator)
 router.post("/operator/login",OperatorController.loginOperator)
 
 // Option
@@ -32,9 +32,9 @@ router.get("/option/getOptions",VerifyAuth,CheckAccess(['USER']),OptionControlle
 router.post("/option/saveOptions",VerifyAuth,CheckAccess(['USER']),OptionController.saveOptions)
 
 // Products
-router.post("/product/add",VerifyAuth,CheckAccess(['PRODUCT']),ProductController.addProducts)
+router.post("/product/add",VerifyAuth,CheckAccess(['USER']),ProductController.addProducts)
 router.post("/product/getByMerchantId",ProductController.getProductsByMerchantId)
-router.post("/product/addsingleproduct",VerifyAuth,CheckAccess(['PRODUCT']),ProductController.addSingleProduct)
+router.post("/product/addsingleproduct",VerifyAuth,CheckAccess(['USER']),ProductController.addSingleProduct)
 
 // PreparedMessages
 router.post("/questions/add",VerifyAuth,CheckAccess(['OPERATOR','USER']),PreparedMessages.addQuestion)
