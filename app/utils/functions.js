@@ -263,6 +263,41 @@ const uploadVoice = async (file) => {
 
 };
 
+const uploadFileOperator = async (file, id) => {
+
+    let str = file.originalname;
+    let rename = str.replace(/\s+/g, ''); // حذف فضاهای اضافی از نام فایل
+    let fileName = `${Date.now()}${rename}`;
+  
+    // ایجاد مسیر پوشه و اضافه کردن آن به نام فایل
+    const folderPath = `operators/${id}/`; // پوشه‌ای که می‌خواهید فایل‌ها در آن ذخیره شوند
+    const filePath = folderPath + fileName; // مسیر کامل فایل داخل پوشه
+  
+    // تنظیمات اتصال به S3
+    const client = new S3Client({
+      region: "default",
+      endpoint: process.env.LIARA_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.LIARA_ACCESS_KEY,
+        secretAccessKey: process.env.LIARA_SECRET_KEY
+      },
+    });
+  
+    // تنظیمات پارامترهای درخواست برای آپلود فایل
+    const params = {
+      Body: file.buffer,
+      Bucket: process.env.LIARA_BUCKET_NAME,
+      Key: filePath, // ذخیره فایل در مسیر پوشه تعیین شده
+      ContentType: file.mimetype,
+    };
+  
+    // آپلود فایل به S3
+    const result = await client.send(new PutObjectCommand(params));
+  
+    // برگشت نام فایل به عنوان نتیجه
+    return filePath;
+  };
+
 const getFileLink = async (fileName) => {
 
     const client = new S3Client({
@@ -519,5 +554,5 @@ module.exports = {
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
     convertMillisToJalali,uploadVoice,crawlProductPage,getUrlsMultiSitemap,getAllProductUrlsFromSitemaps,
-    getProductsDataCrawler,getPlan,checkExpirePlan,sendReqZibal
+    getProductsDataCrawler,getPlan,checkExpirePlan,sendReqZibal,uploadFileOperator
 }

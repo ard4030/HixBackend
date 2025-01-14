@@ -7,6 +7,8 @@ const { UserController } = require("../controller/user.controller");
 const { CrawlerController } = require("../controller/crawler.controller");
 const { CheckAccess } = require("../middleware/CheckAccess");
 const { VerifyAuth } = require("../middleware/VerifyAccessToken");
+const { UploadController } = require("../controller/upload.controller");
+const { upload } = require("../middleware/multer");
 
 const router = require("express").Router();
 
@@ -23,6 +25,8 @@ router.post("/plan/add",VerifyAuth,CheckAccess(['SUPER_ADMIN']),PlanController.a
 router.get("/plan/get",VerifyAuth,PlanController.getPlans)
 router.post("/plan/setPlan",VerifyAuth,PlanController.setPlan)
 
+// Uplaod
+router.post("/upload/single",VerifyAuth,upload,UploadController.fileUpload)
 
 
 // Operator
