@@ -450,6 +450,7 @@ const getAllProductUrlsFromSitemaps = async (sitemaps, format) => {
     // استفاده از map و Promise.all برای همزمان پردازش کردن تمام سابت‌مپ‌ها
     await Promise.all(sitemaps.map(async (element) => {
         const response = await axios.get(element);
+        
         const $ = cheerio.load(response.data);
         
         // پردازش لینک‌ها
@@ -458,7 +459,7 @@ const getAllProductUrlsFromSitemaps = async (sitemaps, format) => {
             urls.push(url);
         });
     }));
-
+    console.log(urls)
     return urls;
 }
 

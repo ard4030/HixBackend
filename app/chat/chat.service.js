@@ -57,10 +57,6 @@ const SaveMessageClient = async (data,user) => {
             message.content = data.qs?data.item.key:data.message
             message.type = data.type
             break;
-        case "image/jpeg":
-            message.link = data.link
-            message.type = data.type
-            break;
         case "application/x-zip-compressed":
             message.link = data.link
             message.type = data.type
@@ -79,6 +75,11 @@ const SaveMessageClient = async (data,user) => {
             break;
         default:
             break;
+    }
+
+    if(data.type.includes("image")){
+        message.type = data.type
+        message.link = data.link
     }
 
     const isChat = await ChatModel.findOne({sid:user.cookieId,merchantId:user.merchantId});

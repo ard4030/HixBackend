@@ -82,12 +82,14 @@ class CrawlerController{
                     productsUrl = await getAllProductUrlsFromSitemaps(mySiteMaps,productMapFormatt);
                     productsData = await getProductsDataCrawler(productsUrl,titleSelector,categorySelector,descriptionSelector,imageSelector,priceSelector,baseUrlImage,limit,limitTimeRequest)
                 }else{
+                   
                     sitemaps = await getUrlsMultiSitemap(sitemap,sitemapFormat);
                     productsUrl = await getAllProductUrlsFromSitemaps(sitemaps,productMapFormatt);
                     productsData = await getProductsDataCrawler(productsUrl,titleSelector,categorySelector,descriptionSelector,imageSelector,priceSelector,baseUrlImage,limit,limitTimeRequest)
                 }
                 
              }else {
+                
                 productsUrl = await getAllProductUrlsFromSitemaps([sitemap],productMapFormatt);
                 productsData = await getProductsDataCrawler(productsUrl,titleSelector,categorySelector,descriptionSelector,imageSelector,priceSelector,baseUrlImage,limit,limitTimeRequest)
              }
