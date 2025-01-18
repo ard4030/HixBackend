@@ -212,7 +212,8 @@ class ChatApplication {
             const messages = await ChatModel.findOne({sid:details.sid});
             if(messages){
                 const lastMessage = getLastMessage(messages.messages[messages.messages.length-1]);
-                this.onlineUsers[user._id][socket.id]['lastMessage']= lastMessage;
+                this.onlineUsers[user._id][socket.id]['lastMessage']= lastMessage.msg;
+                this.onlineUsers[user._id][socket.id]['lastDate']= lastMessage.date;
                 this.onlineUsers[user._id][socket.id]['lastMessageSeen']= false
             }
             
@@ -325,7 +326,7 @@ class ChatApplication {
         // const plan = await PlanModel.findOne({_id:user.planId})
 
         // Check Ai True In Plan
-        
+
         const plan = await getPlan(user.merchantId)
         if(plan.intelligentInteractionWithUsers){
             const ai = new AI(user.merchantId)

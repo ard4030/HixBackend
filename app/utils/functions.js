@@ -326,24 +326,24 @@ const getLastMessage = (lastMessage) => {
     if(lastMessage?.type){
         switch (lastMessage.type) {
             case "text":
-                return lastMessage.content
+                return {msg:lastMessage.content,date:fullTime}
             case "slider":
-                return "لیست محصولات"
+                return {msg:"لیست محصولات",date:fullTime}
             case "image/jpeg":    
-                return "عکس"
+                return {msg:"عکس",date:fullTime}
             case "application/x-zip-compressed": 
-                return "فایل"   
-            case "video/mp4":    
-                return "ویدیو"
+                return {msg:"فایل",date:fullTime}
+            case "video/mp4":   
+                return {msg:"ویدیو",date:fullTime} 
             case "application/pdf":  
-                return "سند"  
+                return {msg:"سند",date:fullTime} 
             case "audio/wav":
-                return "ویس"    
+                return {msg:"ویس",date:fullTime}   
             default:
-                return "پشتیبانی نمیشه";
+                return {msg:"پشتیبانی نمیشه",date:fullTime}
         }
     }else{
-        return "پشتیبانی نمیشه";
+        return {msg:"پشتیبانی نمیشه",date:fullTime}
     }
     
 }
