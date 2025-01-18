@@ -325,10 +325,12 @@ class ChatApplication {
         // const plan = await PlanModel.findOne({_id:user.planId})
 
         // Check Ai True In Plan
+        
         const plan = await getPlan(user.merchantId)
         if(plan.intelligentInteractionWithUsers){
             const ai = new AI(user.merchantId)
             let finall = await ai.respondToMessage(data.message);
+            console.log(finall)
             if(finall.success){
                 finall.fullTime = convertMillisToJalali(data.time);
                 await SaveMessageOperator(finall,user,true);

@@ -75,7 +75,8 @@ module.exports = class AI {
                         type:'text',
                         message:"متاسفانه مشکلی پیش آمد. لطفا دوباره تلاش کنید.",
                         data:[],
-                        success:false
+                        success:false,
+                        errorText:error.message
                     }
                     return response
                 }
@@ -93,7 +94,8 @@ module.exports = class AI {
                 success:false,
                 type:"text",
                 message:"مشکلی پیش آمده",
-                data:[]
+                data:[],
+                errorText:error.message
             } 
         }
         

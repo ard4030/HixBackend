@@ -337,6 +337,8 @@ const getLastMessage = (lastMessage) => {
                 return "ویدیو"
             case "application/pdf":  
                 return "سند"  
+            case "audio/wav":
+                return "ویس"    
             default:
                 return "پشتیبانی نمیشه";
         }
