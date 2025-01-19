@@ -9,6 +9,7 @@ const { CheckAccess } = require("../middleware/CheckAccess");
 const { VerifyAuth } = require("../middleware/VerifyAccessToken");
 const { UploadController } = require("../controller/upload.controller");
 const { upload } = require("../middleware/multer");
+const { ChatController } = require("../controller/chat.controller");
 
 const router = require("express").Router();
 
@@ -27,7 +28,6 @@ router.post("/plan/setPlan",VerifyAuth,PlanController.setPlan)
 
 // Uplaod
 router.post("/upload/single",VerifyAuth,upload,UploadController.fileUpload)
-
 
 // Operator
 router.post("/operator/add",VerifyAuth,CheckAccess(['USER']),OperatorController.addOperator)
@@ -53,6 +53,9 @@ router.get("/questions/get",VerifyAuth,CheckAccess(['OPERATOR','USER']),Prepared
 router.post("/crawler/crawl",CrawlerController.crawlSitemap)
 router.post("/crawler/crawlSingle",CrawlerController.crowlSingleProduct)
 router.post("/crawler/crowlAllProducts",CrawlerController.crowlAllProducts)
+
+// Chats
+router.post("/chat/getAll",VerifyAuth,CheckAccess(['USER','OPERATOR']),ChatController.getChatsByMerchant)
 
 
 module.exports = {
