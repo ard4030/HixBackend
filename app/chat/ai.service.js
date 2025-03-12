@@ -1,6 +1,7 @@
 const OpenAI  = require("openai");
 const { ProductModel } = require("../model/ProductModel");
 const { OptionModel } = require("../model/Option");
+const { setCache } = require("../utils/functions");
 
 module.exports = class AI {
     merchantId = null;
@@ -28,18 +29,16 @@ module.exports = class AI {
             const products = await ProductModel.find({merchantId:this.merchantId})
             // const options = {language:"فارسی"}
             const options = await OptionModel.findOne({merchantId:this.merchantId});
+
             this.contentAi = options.options.contentAi;
-            this.contentAi += JSON.stringify(products);
-            // console.log(this.contentAi)
+            // this.contentAi += JSON.stringify(products);
 
-            // let finallMessage = `سلام لطفا سوالاتی که میپرسم رو فقط و فقط بر اساس دیتای من جواب بده`
-            // finallMessage += `دیتای من این هست ${JSON.stringify(products)} `
-            // finallMessage += `اگه سوال بی ربط بود بگو نمیتونی پاسخ بدی`
-            // finallMessage += `اگه میخوای لیست محصولات رو نشون بدی فیلتر کن و درقالب یک آرایه برگردون بدون متن اضافی`
-            // finallMessage += `و در اخر این ${options} برای پاسخگویی در نظر بگیر. سوال من اینه  `
-            // finallMessage += message
-
-            // console.log(finallMessage)
+            // return {
+            //     success:true,
+            //     type:"text",
+            //     message:"اروررینممم",
+            //     data:[],
+            // } 
 
             // بررسی اینکه آیا پیام شامل کلمات خاصی است
             if (message.includes('گوشی') || message.includes('قیمت')) {
@@ -67,6 +66,9 @@ module.exports = class AI {
                         ],
                     });
 
+                     // استخراج تعداد توکن‌های مصرفی از پاسخ
+                    const usage = completion.usage;
+                    console.log("Tokens used:", usage); // نمایش تعداد توکن‌های مصرفی در کنسول
 
                     response = completion.choices[0].message.content;
                 } catch (error) {

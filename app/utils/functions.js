@@ -8,6 +8,8 @@ const cheerio = require('cheerio');
 const { PlanModel } = require('../model/PlanModel');
 const { UserModel } = require('../model/UserModel');
 const Zibal = require('zibal');
+const cache = require('memory-cache');
+
 
 // require('dotenv').config();
 
@@ -549,6 +551,10 @@ const sendReqZibal = () => {
 }
 
 
+const setCache = () => {
+    cache.put('lastMessage', true, 30000);  // 10000 میلی‌ثانیه (10 ثانیه) زمان انقضا
+}
+
 
 
 module.exports = {
@@ -557,5 +563,6 @@ module.exports = {
     getUserAndOperatorBySocketID,getOperatorsByMerchantId,getUsersByMerchantId,uploadFile,
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
     convertMillisToJalali,uploadVoice,crawlProductPage,getUrlsMultiSitemap,getAllProductUrlsFromSitemaps,
-    getProductsDataCrawler,getPlan,checkExpirePlan,sendReqZibal,uploadFileOperator
+    getProductsDataCrawler,getPlan,checkExpirePlan,sendReqZibal,uploadFileOperator,
+    setCache
 }
