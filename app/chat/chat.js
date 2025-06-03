@@ -17,10 +17,24 @@ const { OptionModel } = require("../model/Option");
 const { PreparedMessagesModel } = require("../model/PreparedMessages");
 const {PlanModel} = require("../model/PlanModel");
 const { AllowedSiteModel } = require("../model/AllowedSiteModel");
+const { TelegramBotListener } = require("./TelegramBotManager");
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require('fs');
+const path = require('path');
 
+
+// SendToTelegram Test
+// const token = '7932459058:AAGzc4BvtCir4DBW7BUFhnEvQCdk8kam0XI';
+// const bot = new TelegramBot(token, { polling: true });
+
+// bot.on('message', (msg) => {
+//     console.log('پیامی از کاربر دریافت شد:', msg.text);
+//     console.log(msg.chat.id)
+//     // bot.sendMessage(msg.chat.id, 'پیامت رسید ✅');
+// });
 
 class ChatApplication {
-    constructor(httpServer, app) {
+    constructor(httpServer, app,botClass) {
         this.app = app;
         this.io = new Server(httpServer, this.getSocketOptions());
         
@@ -28,9 +42,62 @@ class ChatApplication {
         this.onlineUsers = {}; // ذخیره کاربران آنلاین به صورت آبجکت
         this.onlineOperators = {}; // ذخیره اپراتورهای آنلاین به صورت آبجکت
         this.userToOperatorMap = {}; // ذخیره ارتباط کاربران و اپراتورها به صورت آبجکت
-        
+        this.verifiedBots = {}; //ربات هایی که وریفای میشن
+
+        this.TBL = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+        this.InitialBots()
+        // this.botManager = new TelegramBotManager("");
+
         this.setSocketListeners();
     }
+
+    // Initial Telegram Bots
+    async InitialBots(){
+
+        // 1. خوندن فایل (اگر خالی بود، مقدار پیش‌فرض می‌ذاریم)
+        const filePath = path.join(__dirname, 'bots.json'); // اگر فایل کنار chat.js هست
+
+        let rawData = fs.readFileSync(filePath, 'utf-8').trim();
+        this.verifiedBots = rawData ? JSON.parse(rawData) : {};
+        
+        
+        this.TBL.on('message', async (msg) => {
+            const chatId = msg.chat.id;
+            const text = msg.text;
+
+            // if(msg.reply_to_message){
+
+            // }
+            // console.log("---",msg)
+
+            if(this.verifiedBots[chatId]){
+                await this.sendMessageTelegramToUser(msg,chatId)
+            }else if(!this.verifiedBots[chatId] && text.includes("code")){
+                const operator = await OperatorsModel.findOne({telegramCode:text});
+
+                if(operator){
+                    console.log(operator)
+                    if (!this.verifiedBots[chatId]) {
+                        this.verifiedBots[chatId] = {};
+                    }
+                    this.verifiedBots[chatId]['userName'] = operator.userName;
+                    this.verifiedBots[chatId]['_id'] = operator._id;
+                    this.verifiedBots[chatId]['merchantId'] = operator.merchantId;
+                    const jsonData = JSON.stringify(this.verifiedBots);
+                    fs.writeFileSync(filePath, jsonData);
+                    this.TBL.sendMessage(chatId,",وریفای موفق ادامه بدید")
+                }else{
+                    this.TBL.sendMessage(chatId,"کد شما صحیح نیست")
+                }
+            }else{
+                this.TBL.sendMessage(chatId,"لطفا کد وریفای خود را وارد کنید")
+            }    
+        });
+
+
+    }
+
+    
 
     // Set Socket Options
     getSocketOptions() {
@@ -164,7 +231,7 @@ class ChatApplication {
     async handleUserJoin(socket, apiKey, callback, cookieId) {
         // Check User Api Key
         const user = await UserModel.findOne({ apiKey });
-        console.log(apiKey)
+        // console.log(apiKey)
         if (!user) {
             callback({code:0,message:'API Key نامعتبر است'})
             return
@@ -348,52 +415,105 @@ class ChatApplication {
 
     }
 
+    async sendMessageToTelegram(user,details,data){
+        // const merchantOperators = this.onlineOperators[user.merchantId];
+        // console.log("User ",user)
+        // console.log("Details ",details)
+        // console.log("Data ", data )
+        let chatId = null;
+        for (const key in this.verifiedBots) {
+            if(String(this.verifiedBots[key].merchantId) === String(user.merchantId)){
+                chatId=key;
+                break;
+            }
+        }  
+
+        try {
+            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: `
+                    کاربر:${user.name}
+                    با سوکت زیر
+                    SID_${user.id}
+                    
+                    ${data.message}
+                    `,
+                }),
+            });
+            
+        } catch (error) {
+            console.log(error.message)
+        }
+    }
+
+    async sendMessageTelegramToUser(msg,chatId){
+ 
+        console.log(`[${this.verifiedBots[chatId].userName}] پیام دریافت شد از ${chatId}: ${msg.text}`);  
+
+        if(msg.reply_to_message){
+            const match = msg.reply_to_message.text.match(/SID_+([^\s]+)/);
+            const socketID = match ? match[1] : null;
+
+            const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,socketID)
+
+            if(targetUser){
+                let data={
+                    message:msg.text,
+                    content:msg.text,
+                    type:"text",
+                    sender: 'operator',
+                    cookieId:socketID,
+                    sid:socketID
+                };
+                if (socketID) {
+                    data.time = Date.now();
+                    data.fullTime = convertMillisToJalali(data.time)
+                    this.io.to(socketID).emit('newMessageFromOperator', data);
+    
+                    
+    
+                    // SaveMessage
+                    await SaveMessageOperator(data,targetUser,false);
+    
+                    // Set Last Message
+                    this.onlineUsers[targetUser.merchantId][data.sid]['lastMessage']= data?.message;
+                    this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageSeen']= true
+    
+                    // Update Users List
+                    const operators = getOperatorsByMerchantId(this.onlineOperators,targetUser.merchantId);
+                    for (const key in operators) {
+                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[targetUser.merchantId] || []));
+                    }
+    
+                }
+                // console.log(socketID)
+                }else{
+                    this.TBL.sendMessage(chatId,"لطفا روی مسیج کاربر مورد نظر ریپلای کن")  
+                }
+
+            }
+
+        
+        // all {
+        //     sid: 'EXylmZEFl2K7CdbKAAAH',
+        //     message: 'asdas',
+        //     content: 'asdas',
+        //     apiKey: 'XUv61HbNQJg6y4bWeqwX9dx03Ur10b0O',
+        //     cookieId: 'VMtI-VD0ocRRlxF5AAAZ',
+        //     type: 'text',
+        //     data: [],
+        //     link: '',
+        //     sender: 'operator'
+        // }
+    }
+
     // Handle Send Message From Client To Operator
     async handleSendMessageToOperator(socket, data , callback){
         const details = await verifyUserChatToken(data.cookieId)
         const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
-        // console.log(this.onlineUsers)
-        // console.log(socket.id)
-        
-        // Save Client Message
-        // if(data.ai){
-        //     data.time = Date.now();
-        //     data.fullTime = convertMillisToJalali(data.time)
-
-        //     await SaveMessageClient(data,user,false)
-        //     const ai = new AI(user.merchantId)
-        //     let finall = await ai.respondToMessage(data.message);
-        //     finall.fullTime = convertMillisToJalali(data.time)
-        //     callback({success:true,message:data})
-        //     await SaveMessageOperator(finall,user,true);
-        //     this.io.to(socket.id).emit('newMessageFromOperator', {
-        //         type:finall.type,
-        //         message:finall.message,
-        //         data:finall.data,
-        //         fullTime:data.fullTime
-        //     });
-            
-            
-        // // Check For Online Operators
-        // }else if(data.qs){
-        //     let qss = [
-        //         {key:"1",value:"میتونی محصول رو مقایسه کنی؟",qs:"این محصول برای مقایسه است"},
-        //         {key:"2",value:"ارزونترین محصولتون چیه؟",qs:"این محصول قیمت مناسبی دارد"},
-        //         {key:"3",value:"چطور میتونم هیکس رو داشته باشم؟",qs:"این لیست محصولات است"},
-        //     ]
-        //     data.time = Date.now();
-        //     data.fullTime = convertMillisToJalali(data.time)
-        //     await SaveMessageClient(data,user,false)
-        //     await SaveMessageOperator(data,user,false);
-        //     this.io.to(socket.id).emit('newMessageFromOperator', {
-        //         type:"text",
-        //         message:data.item.key,
-        //         data:qss,
-        //         fullTime:data.fullTime
-        //     });
-
-        //     return
-        // }
 
         if(data.qs){
                 data.time = Date.now();
@@ -451,6 +571,12 @@ class ChatApplication {
                     this.io.to(key).emit('messageSound', user);
                 }
 
+                // Send Telegram
+                const OnTelegram = true;
+                if(OnTelegram){
+                    await this.sendMessageToTelegram(user,details,data)
+                }
+
                 callback({
                     success:true,
                     message:"send",
@@ -479,6 +605,13 @@ class ChatApplication {
                     this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
                     this.io.to(key).emit('messageSound', user);
                 }
+                
+                // Send Telegram
+                const OnTelegram = true;
+                if(OnTelegram){
+                    await this.sendMessageToTelegram(user,details,data)
+                }
+
                 callback({
                     success:true,
                     message:"send",
@@ -494,7 +627,9 @@ class ChatApplication {
 
     // Handle Send Message From Operator To Client
     async handleSendMessageToUser(socket, data,callback){
+        // console.log("all",data)
         const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,data.sid)
+        // console.log("Target User ",targetUser)
         if (targetUser.id) {
             data.time = Date.now();
             data.fullTime = convertMillisToJalali(data.time)
