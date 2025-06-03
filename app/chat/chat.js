@@ -653,7 +653,7 @@ class ChatApplication {
                 const filePath = path.join(__dirname, 'bots.json'); 
                 let rawData = fs.readFileSync(filePath, 'utf-8').trim();
                 this.verifiedBots = rawData ? JSON.parse(rawData) : {};
-                await sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
+                await this.sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
     
             }
             // this.handleSendMessageToAI(socket, data , callback)
