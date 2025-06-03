@@ -19,17 +19,17 @@ const SaveMessageOperator = async (data,user,ai) => {
         fileName:data.fileName?data.fileName:""
     }
 
-    const isChat = await ChatModel.findOne({sid:user.cookieId,merchantId:user.merchantId})
+    const isChat = await ChatModel.findOne({sid:user?.cookieId,merchantId:user?.merchantId})
     if(isChat){
-        await ChatModel.updateOne({sid:user.cookieId,merchantId:user.merchantId},{
+        await ChatModel.updateOne({sid:user?.cookieId,merchantId:user.merchantId},{
             $push:{messages:message}
         })
     }else{
         await ChatModel.create({
             name:ai?"ai":"operator",
             email:user?.userName?user?.userName:"",
-            merchantId:user.merchantId,
-            sid:user.cookieId,
+            merchantId:user?.merchantId,
+            sid:user?.cookieId,
             messages:[message],
             data:[],
         })

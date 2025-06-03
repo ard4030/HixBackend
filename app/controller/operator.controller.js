@@ -2,10 +2,15 @@ const { OperatorsModel } = require("../model/OperatorsModel");
 const { UNVALID, SUCCESS, ERROR, UNAUTH } = require("../utils/constants");
 const { SignAccessToken, generateApiKey, hashPassword, unhashPassword } = require("../utils/functions");
 const { RegisterValidation } = require("../validation/RegisterValidation");
+const { v4: uuidv4 } = require('uuid');
 
 class OperatorController{
 
+    
+
     async addOperator(req,res,next){
+        const uuid = uuidv4(); // مثلاً: '9b1deb4d-b5e5-4b76-87b5-6e3fce728654'
+
         let data = req.body;
         data.merchantId = req?.user?._id;
         try {
@@ -34,7 +39,9 @@ class OperatorController{
                 status:"active",
                 userName:data.userName,
                 password: await hashPassword(data.password),
-                apikey:generateApiKey()
+                apikey:generateApiKey(),
+                telegramToken:data.telegramToken,
+                telegramCode:`code_${uuid}`
             })
 
             return res.status(SUCCESS).json({

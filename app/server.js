@@ -63,13 +63,14 @@ module.exports = class Application{
 
     }
 
-    createServer(PORT){
+    async createServer(PORT){
         const server = http.createServer(this.#app);
+        const chatServer = new ChatApplication(server,this.#app);
+
         server.listen(PORT, () => {
             console.log(`Server Run > On  http://localhost:${PORT}`)
         })
 
-        const chatServer = new ChatApplication(server,this.#app);
     }
 
     async configDatabase(DB_URL){
