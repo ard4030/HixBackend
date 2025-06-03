@@ -449,6 +449,31 @@ class ChatApplication {
         }
     }
 
+    async sendMessageToTelegramAllOperators(user, data, chatIDS) {
+        try {
+            const sendPromises = chatIDS.map(item =>
+                fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: item,
+                        text: `
+    کاربر: ${user.name}
+    با سوکت زیر:
+    SID_${user.id}
+
+    ${data.message}
+                        `,
+                    }),
+                })
+            );
+
+            await Promise.all(sendPromises); // منتظر بمان تا همه اجرا شوند
+        } catch (error) {
+            console.error("Error sending message:", error.message);
+        }
+    }
+
     async sendMessageTelegramToUser(msg,chatId){
  
         console.log(`[${this.verifiedBots[chatId].userName}] پیام دریافت شد از ${chatId}: ${msg.text}`);  
@@ -622,7 +647,16 @@ class ChatApplication {
             }
 
         }else{
-            this.handleSendMessageToAI(socket, data , callback)
+            // Send Telegram
+            const OnTelegram = true;
+            if(OnTelegram){    
+                const filePath = path.join(__dirname, 'bots.json'); 
+                let rawData = fs.readFileSync(filePath, 'utf-8').trim();
+                this.verifiedBots = rawData ? JSON.parse(rawData) : {};
+                await sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
+    
+            }
+            // this.handleSendMessageToAI(socket, data , callback)
         }
 
     }
