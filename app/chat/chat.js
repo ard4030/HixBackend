@@ -87,10 +87,10 @@ class ChatApplication {
                     fs.writeFileSync(filePath, jsonData);
                     this.TBL.sendMessage(chatId,",وریفای موفق ادامه بدید")
                 }else{
-                    this.TBL.sendMessage(chatId,"کد شما صحیح نیست")
+                    this.TBL.sendMessage(chatId,".کد شما صحیح نیست")
                 }
             }else{
-                this.TBL.sendMessage(chatId,"لطفا کد وریفای خود را وارد کنید")
+                this.TBL.sendMessage(chatId,"مثال :code_f4418098-fa4f-457e-8c8f-587a0a90a4b6 لطفا کد وریفای خود را وارد کنید")
             }    
         });
 
@@ -464,6 +464,16 @@ class ChatApplication {
 
     ${data.message}
                         `,
+                        reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '✅ قبول چت',
+                                    callback_data: `accept_chat_${user.id}`
+                                }
+                            ]
+                        ]
+                    }
                     }),
                 })
             );
