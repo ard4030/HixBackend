@@ -90,7 +90,9 @@ class ChatApplication {
         });
 
         this.TBL.on("callback_query", async (query) => {
-            console.log(query)
+
+
+            console.log(query.data.substring(12))
         })
 
 
