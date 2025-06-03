@@ -65,11 +65,6 @@ class ChatApplication {
             const chatId = msg.chat.id;
             const text = msg.text;
 
-            // if(msg.reply_to_message){
-
-            // }
-            // console.log("---",msg)
-
             if(this.verifiedBots[chatId]){
                 await this.sendMessageTelegramToUser(msg,chatId)
             }else if(!this.verifiedBots[chatId] && text.includes("code")){
@@ -93,6 +88,10 @@ class ChatApplication {
                 this.TBL.sendMessage(chatId,"مثال :code_f4418098-fa4f-457e-8c8f-587a0a90a4b6 لطفا کد وریفای خود را وارد کنید")
             }    
         });
+
+        this.TBL.on("callback_query", async (query) => {
+            console.log(query)
+        })
 
 
     }
@@ -450,6 +449,25 @@ class ChatApplication {
     }
 
     async sendMessageToTelegramAllOperators(user, data, chatIDS) {
+
+        let inline_keyboard = [];
+
+        // Check Lock Operators
+        if(this.onlineUsers[merchantId.merchantId][data.id]["targetTelegramOperator"]){
+
+        }else{
+            inline_keyboard = [
+                [
+                    {
+                        text: '✅ قبول چت',
+                        callback_data: `accept_chat_${user.id}`
+                    }
+                ]
+            ];
+        }
+        
+
+
         try {
             const sendPromises = chatIDS.map(item =>
                 fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
@@ -465,14 +483,7 @@ class ChatApplication {
     ${data.message}
                         `,
                         reply_markup: {
-                        inline_keyboard: [
-                            [
-                                {
-                                    text: '✅ قبول چت',
-                                    callback_data: `accept_chat_${user.id}`
-                                }
-                            ]
-                        ]
+                        inline_keyboard:inline_keyboard
                     }
                     }),
                 })
