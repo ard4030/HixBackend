@@ -490,11 +490,13 @@ class ChatApplication {
     
                 }
                 // console.log(socketID)
-                }else{
-                    this.TBL.sendMessage(chatId,"لطفا روی مسیج کاربر مورد نظر ریپلای کن")  
-                }
-
+            }else{
+                this.TBL.sendMessage(chatId,"لطفا روی مسیج کاربر مورد نظر ریپلای کن")  
             }
+
+        }else{
+            this.TBL.sendMessage(chatId,"لطفا روی مسیج کاربر مورد نظر ریپلای کن")  
+        }
 
         
         // all {
