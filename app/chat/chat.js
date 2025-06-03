@@ -464,6 +464,16 @@ class ChatApplication {
 
     ${data.message}
                         `,
+                        reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: '✅ قبول چت',
+                                    callback_data: `accept_chat_${user.id}`
+                                }
+                            ]
+                        ]
+                    }
                     }),
                 })
             );
@@ -653,7 +663,7 @@ class ChatApplication {
                 const filePath = path.join(__dirname, 'bots.json'); 
                 let rawData = fs.readFileSync(filePath, 'utf-8').trim();
                 this.verifiedBots = rawData ? JSON.parse(rawData) : {};
-                await sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
+                await this.sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
     
             }
             // this.handleSendMessageToAI(socket, data , callback)
