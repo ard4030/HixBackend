@@ -91,8 +91,11 @@ class ChatApplication {
 
         this.TBL.on("callback_query", async (query) => {
 
+            const userSocketId = query.data.substring(12);
+            const chatId = query.message.from.id;
+            const user = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
+            console.log(user)
 
-            console.log(query.data.substring(12))
         })
 
 
@@ -455,7 +458,7 @@ class ChatApplication {
         let inline_keyboard = [];
 
         // Check Lock Operators
-        if(this.onlineUsers[merchantId.merchantId][data.id]["targetTelegramOperator"]){
+        if(this.onlineUsers[user.merchantId][data.id]["targetTelegramOperator"]){
 
         }else{
             inline_keyboard = [
