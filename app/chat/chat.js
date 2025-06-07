@@ -105,7 +105,13 @@ class ChatApplication {
                         this.TBL.sendMessage(operatorTelegramId,`قبلا چت رو پذیرفتید`, {})
                     }else if (this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === undefined){
                         this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] = operatorTelegramId;
-                        this.TBL.sendMessage(operatorTelegramId,`چت با کاربر ${userSocketId}پذیرفته شد`, {})
+                        this.TBL.sendMessage(operatorTelegramId, `🟢 چت با کاربر (SID_${userSocketId}) پذیرفته شد.\n\n🖊️ لطفاً پاسخ خود را تایپ کنید:`,
+                            {
+                                // reply_to_message_id: query.message.message_id,
+                                // reply_markup: {
+                                //     force_reply: true
+                                // }
+                            })
 
                         const chatIDS = Object.keys(this.verifiedBots).map(item => {
                             if(item !== operatorTelegramId) return item
