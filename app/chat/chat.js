@@ -94,7 +94,19 @@ class ChatApplication {
             const userSocketId = query.data.substring(12);
             const chatId = query.message.from.id;
             const user = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
-            console.log(user)
+            const operatorTelegramId = query.from.id;
+            const originalMessageId = query.message.message_id;
+
+            console.log(user);
+            if (query.data.startsWith('accept_chat_')) {
+                
+                console.log(operatorTelegramId,'>>>>>>>>',user,'query::',query);
+                this.TBL.sendMessage(operatorTelegramId,`چت با کاربر ${userSocketId}پذیرفته شد`, {
+                reply_markup: {
+                    force_reply: true
+                }})
+                // chatId و user اشتباهه
+            }
 
         })
 
@@ -458,7 +470,7 @@ class ChatApplication {
         let inline_keyboard = [];
 
         // Check Lock Operators
-        if(this.onlineUsers[user.merchantId][data.id]["targetTelegramOperator"]){
+        if(this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"]){
 
         }else{
             inline_keyboard = [
