@@ -458,7 +458,7 @@ class ChatApplication {
         let inline_keyboard = [];
 
         // Check Lock Operators
-        if(this.onlineUsers[user.merchantId][data.id]["targetTelegramOperator"]){
+        if(this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"]){
 
         }else{
             inline_keyboard = [
@@ -495,7 +495,9 @@ class ChatApplication {
             );
 
             await Promise.all(sendPromises); // منتظر بمان تا همه اجرا شوند
+            return true
         } catch (error) {
+            return false
             console.error("Error sending message:", error.message);
         }
     }
@@ -673,6 +675,23 @@ class ChatApplication {
             }
 
         }else{
+
+            // Save Message
+            data.time = Date.now();
+            data.fullTime = convertMillisToJalali(data.time)
+            await SaveMessageClient(data,user);
+
+            // Set Last Message User List
+            this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
+            this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+
+            callback({
+                    success:true,
+                    message:"send",
+                    message:data
+            })
+            console.log("alll")
+
             // Send Telegram
             const OnTelegram = true;
             if(OnTelegram){    
@@ -680,8 +699,10 @@ class ChatApplication {
                 let rawData = fs.readFileSync(filePath, 'utf-8').trim();
                 this.verifiedBots = rawData ? JSON.parse(rawData) : {};
                 await this.sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
-    
+
             }
+
+            
             // this.handleSendMessageToAI(socket, data , callback)
         }
 
