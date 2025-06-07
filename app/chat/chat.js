@@ -511,9 +511,9 @@ class ChatApplication {
     async sendMessageToTelegramAllOperators(user, data, chatIDS) {
 
         let inline_keyboard = [];
-
         // Check Lock Operators
-        if(this.onlineUsers[user.merchantId][data.id]["targetTelegramOperator"]){
+        const targetTelegramOperator = this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"] || null;
+        if(targetTelegramOperator){
 
         }else{
             inline_keyboard = [
