@@ -91,10 +91,65 @@ class ChatApplication {
 
         this.TBL.on("callback_query", async (query) => {
 
-            const userSocketId = query.data.substring(12);
-            const chatId = query.message.from.id;
-            const user = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
-            console.log(user)
+            if (query.data.startsWith('accept_chat_')) {
+
+                // Accept Operator Chat
+                const operatorTelegramId = query.from.id;
+                const userSocketId = query.data.substring(12);
+                const chatId = query.message.from.id;
+                const user = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
+
+                if(user){
+                    // Lock User From Operator
+                    if(this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === operatorTelegramId){
+                        this.TBL.sendMessage(operatorTelegramId,`قبلا چت رو پذیرفتید`, {})
+                    }else if (this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === undefined){
+                        this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] = operatorTelegramId;
+                        this.TBL.sendMessage(operatorTelegramId,`چت با کاربر ${userSocketId}پذیرفته شد`, {})
+
+                        const chatIDS = Object.keys(this.verifiedBots).map(item => {
+                            if(item !== operatorTelegramId) return item
+                        });
+                        console.log("chatIDS" ,chatIDS)
+                        try {
+                            const sendPromises = chatIDS.map(item =>
+                                fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        chat_id: item,
+                                        text: `
+                                        کاربر با نام
+                                        ${user.name}
+                                        و سوکت آی دی 
+                                        SID_${user.id}
+                                        به اپراتور
+                                    ${this.verifiedBots[operatorTelegramId].userName}
+                                               
+
+                                        `,
+                                    }),
+                                })
+                            );
+
+                            await Promise.all(sendPromises); // منتظر بمان تا همه اجرا شوند
+                            return true
+                        } catch (error) {
+                            return false
+                            console.error("Error sending message:", error.message);
+                        }
+
+
+                    }else{
+                        
+                        this.TBL.sendMessage(operatorTelegramId,'اپراتور دیگری در حال پاسخگویی به این کاربر است')
+                    }
+                }
+
+
+            }
+
+
 
         })
 
@@ -458,19 +513,22 @@ class ChatApplication {
         let inline_keyboard = [];
 
         // Check Lock Operators
-        if(this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"]){
-
-        }else{
-            inline_keyboard = [
-                [
-                    {
-                        text: '✅ قبول چت',
-                        callback_data: `accept_chat_${user.id}`
-                    }
-                ]
-            ];
+        if(this.onlineUsers[user.merchantId][user.id]){
+            // console.log(this.onlineUsers[user.merchantId])
+            const isTarget = this.onlineUsers[user.merchantId][user.id]["targetTelegramOperator"];
+            // console.log("isTarget ",isTarget)
+            if (isTarget == null || isTarget == undefined) {
+                inline_keyboard = [
+                    [
+                        {
+                            text: '✅ قبول چت',
+                            callback_data: `accept_chat_${user.id}`
+                        }
+                    ]
+                ];
+            }
         }
-        
+
 
 
         try {
@@ -481,11 +539,11 @@ class ChatApplication {
                     body: JSON.stringify({
                         chat_id: item,
                         text: `
-    کاربر: ${user.name}
-    با سوکت زیر:
-    SID_${user.id}
+                        کاربر: ${user.name}
+                        با سوکت زیر:
+                        SID_${user.id}
 
-    ${data.message}
+                        ${data.message}
                         `,
                         reply_markup: {
                         inline_keyboard:inline_keyboard
@@ -511,6 +569,13 @@ class ChatApplication {
             const socketID = match ? match[1] : null;
 
             const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,socketID)
+            const targetTelegram = targetUser?.["targetTelegramOperator"] || null;
+            console.log("targetTelegram" , targetTelegram)
+            if(targetTelegram && targetTelegram !== chatId){
+                   this.TBL.sendMessage(chatId,"عوضی این اپراتور با کس دیگه ای حرف میزنه")
+                   return  
+            }
+
 
             if(targetUser){
                 let data={
@@ -690,7 +755,6 @@ class ChatApplication {
                     message:"send",
                     message:data
             })
-            console.log("alll")
 
             // Send Telegram
             const OnTelegram = true;
