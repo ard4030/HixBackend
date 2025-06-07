@@ -516,22 +516,19 @@ class ChatApplication {
     async sendMessageToTelegramAllOperators(user, data, chatIDS) {
 
         let inline_keyboard = [];
-
         // Check Lock Operators
-        if(this.onlineUsers[user.merchantId][user.id]){
-            // console.log(this.onlineUsers[user.merchantId])
-            const isTarget = this.onlineUsers[user.merchantId][user.id]["targetTelegramOperator"];
-            // console.log("isTarget ",isTarget)
-            if (isTarget == null || isTarget == undefined) {
-                inline_keyboard = [
-                    [
-                        {
-                            text: '✅ قبول چت',
-                            callback_data: `accept_chat_${user.id}`
-                        }
-                    ]
-                ];
-            }
+        const targetTelegramOperator = this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"] || null;
+        if(targetTelegramOperator){
+
+        }else{
+            inline_keyboard = [
+                [
+                    {
+                        text: '✅ قبول چت',
+                        callback_data: `accept_chat_${user.id}`
+                    }
+                ]
+            ];
         }
 
 
