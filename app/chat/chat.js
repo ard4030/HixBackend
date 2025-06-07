@@ -119,23 +119,29 @@ class ChatApplication {
                         console.log("chatIDS" ,chatIDS)
                         try {
                             const sendPromises = chatIDS.map(item =>
-                                fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        chat_id: item,
-                                        text: `
-                                        کاربر با نام
-                                        ${user.name}
-                                        و سوکت آی دی 
-                                        SID_${user.id}
-                                        به اپراتور
-                                    ${this.verifiedBots[operatorTelegramId].userName}
+                                this.TBL.sendMessage(item,`کاربر با نام ${user?.name} و سوکت ایدی SID_${user?.id} به اپراتور ${this.verifiedBots?.[operatorTelegramId]?.userName} متصل شد`,{
+                                    reply_to_message_id : query.message.message_id,
+                                    reply_markup : {
+                                        force_reply : true
+                                    }
+                                })
+                                // fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+                                //     method: 'POST',
+                                //     headers: { 'Content-Type': 'application/json' },
+                                //     body: JSON.stringify({
+                                //         chat_id: item,
+                                //         text: `
+                                //         کاربر با نام
+                                //         ${user.name}
+                                //         و سوکت آی دی 
+                                //         SID_${user.id}
+                                //         به اپراتور
+                                //     ${this.verifiedBots[operatorTelegramId].userName}
                                                
 
-                                        `,
-                                    }),
-                                })
+                                //         `,
+                                //     }),
+                                // })
                             );
 
                             await Promise.all(sendPromises); // منتظر بمان تا همه اجرا شوند
@@ -485,16 +491,11 @@ class ChatApplication {
         // console.log("User ",user)
         // console.log("Details ",details)
         // console.log("Data ", data )
-
-        const targetOperator = this.onlineUsers[user.merchantId][user.id];
-        console.log("targetOperator ",targetOperator)
-
-        let chatIds = [];
         let chatId = null;
         for (const key in this.verifiedBots) {
             if(String(this.verifiedBots[key].merchantId) === String(user.merchantId)){
-                // chatId=key;
-                chatIds.push(key)
+                chatId=key;
+                break;
             }
         }  
 
@@ -505,8 +506,7 @@ class ChatApplication {
                 body: JSON.stringify({
                     chat_id: chatId,
                     text: `
-                    کاربر:${user.name}
-                    با سوکت زیر
+                    کاربر::${user.name}\nبا سوکت زیر
                     SID_${user.id}
                     
                     ${data.message}
@@ -546,13 +546,7 @@ class ChatApplication {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: item,
-                        text: `
-                        کاربر: ${user.name}
-                        با سوکت زیر:
-                        SID_${user.id}
-
-                        ${data.message}
-                        `,
+                        text: `کاربر: ${user.name}\nبا سوکت زیر:\nSID_${user.id}\n${data.message}`,
                         reply_markup: {
                         inline_keyboard:inline_keyboard
                     }
@@ -583,6 +577,7 @@ class ChatApplication {
                    this.TBL.sendMessage(chatId,"عوضی این اپراتور با کس دیگه ای حرف میزنه")
                    return  
             }
+
 
             if(targetUser){
                 let data={
@@ -616,7 +611,7 @@ class ChatApplication {
                 }
                 // console.log(socketID)
             }else{
-                this.TBL.sendMessage(chatId,"کاربر مورد نظر پیدا نشد")  
+                this.TBL.sendMessage(chatId,"لطفا روی مسیج کاربر مورد نظر ریپلای کن")  
             }
 
         }else{
