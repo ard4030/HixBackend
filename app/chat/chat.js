@@ -479,11 +479,16 @@ class ChatApplication {
         // console.log("User ",user)
         // console.log("Details ",details)
         // console.log("Data ", data )
+
+        const targetOperator = this.onlineUsers[user.merchantId][user.id];
+        console.log("targetOperator ",targetOperator)
+
+        let chatIds = [];
         let chatId = null;
         for (const key in this.verifiedBots) {
             if(String(this.verifiedBots[key].merchantId) === String(user.merchantId)){
-                chatId=key;
-                break;
+                // chatId=key;
+                chatIds.push(key)
             }
         }  
 
@@ -576,7 +581,6 @@ class ChatApplication {
                    return  
             }
 
-
             if(targetUser){
                 let data={
                     message:msg.text,
@@ -609,7 +613,7 @@ class ChatApplication {
                 }
                 // console.log(socketID)
             }else{
-                this.TBL.sendMessage(chatId,"لطفا روی مسیج کاربر مورد نظر ریپلای کن")  
+                this.TBL.sendMessage(chatId,"کاربر مورد نظر پیدا نشد")  
             }
 
         }else{
