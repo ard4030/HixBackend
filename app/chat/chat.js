@@ -156,7 +156,6 @@ class ChatApplication {
 
     }
 
-    
 
     // Set Socket Options
     getSocketOptions() {
@@ -407,11 +406,11 @@ class ChatApplication {
         const users = getUsersByMerchantId(this.onlineUsers,MTIDOPERATOR);
         for (const key in users) {
             // Unlock User this operator
-            if(this.onlineUsers[MTIDOPERATOR][key]["targetOperator"] === socket.id){
-                this.onlineUsers[MTIDOPERATOR][key]["targetOperator"] = null;
-                this.onlineUsers[MTIDOPERATOR][key]["opName"] = null;
-                this.onlineUsers[MTIDOPERATOR][key]["opId"] = null
-            }
+            // if(this.onlineUsers[MTIDOPERATOR][key]["targetOperator"] === socket.id){
+            //     this.onlineUsers[MTIDOPERATOR][key]["targetOperator"] = null;
+            //     this.onlineUsers[MTIDOPERATOR][key]["opName"] = null;
+            //     this.onlineUsers[MTIDOPERATOR][key]["opId"] = null
+            // }
 
             // Update Operator list to Client
             this.io.to(key).emit('updateOperatorList', Object.values(this.onlineOperators[MTIDOPERATOR] || []));
@@ -813,6 +812,8 @@ class ChatApplication {
 
         // Get User by SocketId
         const client = getUserAndOperatorBySocketID(this.onlineUsers,data.id);
+
+        if (!client) return
 
         // Check Locked User From Other Operator
         if(client?.targetOperator && client?.targetOperator !== socket.id){
