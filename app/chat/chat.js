@@ -46,9 +46,13 @@ class ChatApplication {
 
         this.TBL = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
         this.InitialBots()
-        // this.botManager = new TelegramBotManager("");
 
         this.setSocketListeners();
+
+        // check timing Message
+        setInterval(() => {
+            this.checkMessageTime()
+        }, 60 * 1000); // 60,000ms = 1 دقیقه
     }
 
     // Initial Telegram Bots
@@ -233,6 +237,62 @@ class ChatApplication {
             socket.on("operatorSendFile", (data, callback) => this.handleOperatorSendFile(socket, data, callback));
             socket.on('isTyping', (data) => this.handleIsTyping(socket, data));
         });
+    }
+
+    // ChangeLock
+    checkMessageTime(){
+        const THREE_MINUTES = 1 * 60 * 1000; // 180000 میلی‌ثانیه
+        console.log("Ckecking")
+        for (const merchantId in this.onlineUsers) {
+            const users = this.onlineUsers[merchantId];
+        
+            for (const userId in users) {
+                const user = users[userId];
+
+                const userTime = user.lastMessageTime;
+                const operatorTime = user.lastMessageOperatorTime;
+
+
+                if(userTime){
+
+                    // این شرط میگه که اخرین پیام کاربر داده
+                    if(operatorTime < userTime || !operatorTime){
+                        if(this.onlineUsers[merchantId][userId]["targetOperator"]){
+                            const now = Date.now();
+                            if(now - userTime > THREE_MINUTES){
+                                this.onlineUsers[merchantId][userId]["targetOperator"]=null;
+                                this.onlineUsers[merchantId][userId]["opName"]=null;
+                                this.onlineUsers[merchantId][userId]["opId"]=null;
+            
+                                const operators = getOperatorsByMerchantId(this.onlineOperators,merchantId);
+    
+                                for (const key in operators) {
+                                    this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[merchantId] || []));
+                                    // this.io.to(key).emit('messageSound', user);
+                                }
+                            }
+                        }
+                    }
+
+                }
+                // else if(userTime){
+                //     // اگه اپراتور قفل کرده بود و پیام نداده بود
+                //     const now = Date.now();
+                //     if(now - userTime > THREE_MINUTES){
+                //         this.onlineUsers[merchantId][userId]["targetOperator"]=null;
+                //         this.onlineUsers[merchantId][userId]["opName"]=null;
+                //         this.onlineUsers[merchantId][userId]["opId"]=null;
+    
+                //         const operators = getOperatorsByMerchantId(this.onlineOperators,merchantId);
+
+                //         for (const key in operators) {
+                //             this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[merchantId] || []));
+                //             // this.io.to(key).emit('messageSound', user);
+                //         }
+                //     }
+                // }
+            }
+        }
     }
 
     // Get Setting
@@ -685,6 +745,7 @@ class ChatApplication {
 
                 // Set Last Message User List
                 this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
+                this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
                 // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
                 this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
                 const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
@@ -720,8 +781,9 @@ class ChatApplication {
                 await SaveMessageClient(data,user);
 
                 // Set Last Message User List
-                this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
-                this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+                this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message;
+                this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false;
+                this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
                 const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
                 for (const key in operators) {
                     this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
@@ -751,6 +813,7 @@ class ChatApplication {
             // Set Last Message User List
             this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
             this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+            this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
 
             callback({
                     success:true,
@@ -792,7 +855,8 @@ class ChatApplication {
             await SaveMessageOperator(data,targetUser,false);
             // Set Last Message
             this.onlineUsers[targetUser.merchantId][data.sid]['lastMessage']= data?.message;
-            this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageSeen']= true
+            this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageSeen']= true;
+            this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageOperatorTime']= Date.now();
 
             // Update Users List
             const operators = getOperatorsByMerchantId(this.onlineOperators,targetUser.merchantId);
