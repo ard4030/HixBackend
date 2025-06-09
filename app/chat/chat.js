@@ -488,7 +488,7 @@ class ChatApplication {
 
     async sendMessageToTelegram(user,details,data){
         // const merchantOperators = this.onlineOperators[user.merchantId];
-        // console.log("User ",user)
+        console.log("sendMessageToTelegram  ",user)
         // console.log("Details ",details)
         // console.log("Data ", data )
         let chatId = null;
@@ -524,6 +524,8 @@ class ChatApplication {
         let inline_keyboard = [];
         // Check Lock Operators
         const targetTelegramOperator = this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"] || null;
+        console.log('targetTelegramOperator >>>',targetTelegramOperator,this.onlineUsers)
+        // این مقدار همیشه نال هست و باعث میشه همیشه دکمه قبول چت بمونه . باید درست بشه
         if(targetTelegramOperator){
 
         }else{
@@ -764,6 +766,7 @@ class ChatApplication {
                 const filePath = path.join(__dirname, 'bots.json'); 
                 let rawData = fs.readFileSync(filePath, 'utf-8').trim();
                 this.verifiedBots = rawData ? JSON.parse(rawData) : {};
+                // اینجا باید شرط بذاری که اگر اپراتوری به این کاربر وصل شد دیگه پیامای کاربر به همه اپراتورا نره
                 await this.sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
 
             }
