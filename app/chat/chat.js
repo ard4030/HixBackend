@@ -221,6 +221,7 @@ class ChatApplication {
             socket.on('setting',(data, callback) => this.settings(socket, data, callback))
             socket.on('join', (data, callback) => this.handleJoin(socket, data, callback));
             socket.on('userInfo', (userData,callback) => this.handleUserInfo(socket, userData,callback));
+            socket.on('closeChat', (userData,callback) => this.handleCloseChat(socket, userData,callback));
             socket.on('disconnect', () => this.handleDisconnect(socket));
             socket.on('disconnectOperator', () => this.handleDisconnect(socket))
             socket.on('sendMessageToOperator', (data,callback) => this.handleSendMessageToOperator(socket, data , callback));
@@ -829,12 +830,12 @@ class ChatApplication {
         }
 
         // Check Prev Lock And remove
-        const lastUserLock = getLockUser(this.onlineUsers,socket.id);
-        if(lastUserLock){
-            this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["targetOperator"] = null;
-            this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["opName"] = null;
-            this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["opId"] = null;
-        }
+        // const lastUserLock = getLockUser(this.onlineUsers,socket.id);
+        // if(lastUserLock){
+        //     this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["targetOperator"] = null;
+        //     this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["opName"] = null;
+        //     this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["opId"] = null;
+        // }
 
         // Lock User To Message Operator
         this.onlineUsers[client.merchantId][data.id]["targetOperator"] = socket.id;
@@ -852,6 +853,29 @@ class ChatApplication {
             data:messages
         })
         return
+    }
+
+    // Close Chat
+    async handleCloseChat(socket,data, callback){
+        // const operatorSocketId = socket.id;
+        const userSocketId = data.sid;
+        const client = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
+
+        this.onlineUsers[client.merchantId][client.id]["targetOperator"] = null;
+        this.onlineUsers[client.merchantId][client.id]["opName"] = null;
+        this.onlineUsers[client.merchantId][client.id]["opId"] = null;
+
+        // Refresh UserLists For Online Operators
+        const operators = getOperatorsByMerchantId(this.onlineOperators,client.merchantId);
+        for (const key in operators) {
+            this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[client.merchantId] || []));
+        }
+        callback({
+            success:true,
+        })
+        return
+
+        
     }
 
     // Get Questions 
