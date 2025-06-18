@@ -7,7 +7,16 @@ const { getCookie, generateUserChatToken, verifyUserChatToken, getUserAndOperato
      getLastMessage,
      convertMillisToJalali,
      uploadVoice,
-     getPlan} = require("../utils/functions");
+     getPlan,
+     setOnlineUsers,
+     getAllUsersSocketIds,
+     setOnlineOperators,
+     getUsersSocketIdByMerchantIdNew,
+     getOperatorsByMerchantIdNew,
+     getUsersByMerchantIdNew,
+     getNowOnlineOperators,
+     getOperatorBySocketIdNew,
+     getUserBySocketIdNew} = require("../utils/functions");
 const { OperatorsModel } = require("../model/OperatorsModel");
 const { UserModel } = require("../model/UserModel");
 const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./chat.service");
@@ -44,8 +53,9 @@ class ChatApplication {
         this.userToOperatorMap = {}; // ذخیره ارتباط کاربران و اپراتورها به صورت آبجکت
         this.verifiedBots = {}; //ربات هایی که وریفای میشن
 
-        this.TBL = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
-        this.InitialBots()
+        this.TBL=""
+        // this.TBL = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+        // this.InitialBots()
 
         this.setSocketListeners();
 
@@ -53,6 +63,11 @@ class ChatApplication {
         setInterval(() => {
             this.checkMessageTime()
         }, 60 * 1000); // 60,000ms = 1 دقیقه
+
+        // Testing New OnlineUsers
+        this.onlineUsers1 = {};
+        this.onlineOperators1 = {};
+        // this.onlineUsers1 = this.getOnlineUsers();
     }
 
     // Initial Telegram Bots
@@ -171,6 +186,24 @@ class ChatApplication {
 
 
     }
+
+
+    getOnlineUsers(){
+        const filePath = path.join(__dirname, 'onlineusers.json'); 
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, JSON.stringify({}));
+            return {};
+        }
+
+        const rawData = fs.readFileSync(filePath, 'utf-8').trim();
+        try {
+            return rawData ? JSON.parse(rawData) : {};
+        } catch (err) {
+            console.error("خطا در parse کردن فایل:", err.message);
+            return {}; // یا throw کن اگه بخوای
+        }
+    }
+
 
 
     // Set Socket Options
@@ -319,46 +352,69 @@ class ChatApplication {
         }
     }
 
-    // Handle Operator Join
+    // Handle Operator Join --- Change New Version
     async handleOperatorJoin(socket, apiKey, callback) {
         
         let operator = await OperatorsModel.findOne({ apikey: apiKey });
+
+        // Check Valid Operator
         if (!operator) {
             callback({
                 success:false,
                 message:'API Key اپراتور نامعتبر است'
             })
             return
-            // return socket.emit('message', 'API Key اپراتور نامعتبر است');
-        }
-        
-        if(!this.onlineOperators[operator?.merchantId]){
-            this.onlineOperators[operator?.merchantId] = {};
         }
 
-        // Check Other Online Operator This Merchant
-        // if(this.onlineOperators[operator.merchantId] && Object.values(this.onlineOperators[operator.merchantId]).length > 0){
-        //     return callback({success:false,message:"یک اپراتور دیگر متل است"})
-        // }else{
-        //     this.onlineOperators[operator.merchantId][socket.id] = operator;
+        // Last Version-------------
+        // if(!this.onlineOperators[operator?.merchantId]){
+        //     this.onlineOperators[operator?.merchantId] = {};
         // }
-        this.onlineOperators[operator.merchantId][socket.id] = operator;
-  
+        // this.onlineOperators[operator.merchantId][socket.id] = operator;
+
+        // New Version------------
+        if(!this.onlineOperators[operator?._id]){
+            this.onlineOperators[operator._id] = {};
+        }
+        this.onlineOperators1[operator._id] = {
+            firstName:operator.firstName,
+            lastName:operator.lastName,
+            merchantId:operator.merchantId,
+            socketId:socket.id,
+            onlined:true,
+            created:Date.now(),
+            id:operator._id
+        };
+        setOnlineOperators(this.onlineOperators1)
+        console.log("connectted -- ", socket.id)
         console.log(`Operator ${operator.userName} joined the chat`);
         
         // Get User List In Operator Panel
-        socket.emit('updateUserList', Object.values(this.onlineUsers[operator.merchantId] || []));
+        // Last Version
+        // socket.emit('updateUserList', Object.values(this.onlineUsers[operator.merchantId] || []));
+        // New Version
+        socket.emit('updateUserList', getUsersByMerchantIdNew(this.onlineUsers1,operator.merchantId) || []);
 
         // Update Operator List Client Widget
-        const users = getUsersByMerchantId(this.onlineUsers,operator.merchantId);
-        for (const key in users) {
-         this.io.to(key).emit('updateOperatorList', Object.values(this.onlineOperators[operator.merchantId] || []));
-        }
+        // Last Version----------
+        // const users = getUsersByMerchantId(this.onlineUsers,operator.merchantId);
+        // for (const key in users) {
+        //  this.io.to(key).emit('updateOperatorList', Object.values(this.onlineOperators[operator.merchantId] || []));
+        // }
+
+        // New Version------------
+        // به یوزر های این مرچنت باید اطلاعات اپراتور ها ارسال بشه
+        const merchantUsersSocketIDS = getUsersSocketIdByMerchantIdNew(this.onlineUsers1,operator.merchantId);
+        const merchantOperators = getOperatorsByMerchantIdNew(this.onlineOperators1,operator.merchantId);
+        merchantUsersSocketIDS.forEach(item => {
+            this.io.to(item).emit('updateOperatorList', merchantOperators || []);
+        })
+
         callback({success:true,message:"موفق",socketId:socket.id})
         return
     }
 
-    // Handle Client Join
+    // Handle Client Join --- Change New Version
     async handleUserJoin(socket, apiKey, callback, cookieId) {
         // Check User Api Key
         const user = await UserModel.findOne({ apiKey });
@@ -391,11 +447,28 @@ class ChatApplication {
                 return
             }
 
-            if (!this.onlineUsers[user?._id]) {
-                this.onlineUsers[user._id] = {};
-            }
+            // Last Version----------------
+            // if (!this.onlineUsers[user?._id]) {
+            //     this.onlineUsers[user._id] = {};
+            // }
+            // this.onlineUsers[user._id][socket.id] = {
+            //     userData:details.userData,
+            //     name:details.userData?.name?details.userData?.name:"مهمان",
+            //     id: socket.id ,
+            //     cookieId:details.sid,
+            //     merchantId:user._id,
+            //     targetOperator:null,
+            //     opName:null,
+            //     opId:null
+            // };
 
-            this.onlineUsers[user._id][socket.id] = {
+            // New Version---------------
+  
+            if (!this.onlineUsers1[details?.sid]) {
+                this.onlineUsers1[details.sid] = {};
+            }
+            this.onlineUsers1[details.sid] = {
+                socketId : socket.id,
                 userData:details.userData,
                 name:details.userData?.name?details.userData?.name:"مهمان",
                 id: socket.id ,
@@ -404,29 +477,53 @@ class ChatApplication {
                 targetOperator:null,
                 opName:null,
                 opId:null
-            };
+            } 
 
             // Get Last Message
             const messages = await ChatModel.findOne({sid:details.sid});
             if(messages){
                 const lastMessage = getLastMessage(messages.messages[messages.messages.length-1]);
-                this.onlineUsers[user._id][socket.id]['lastMessage']= lastMessage.msg;
-                this.onlineUsers[user._id][socket.id]['lastDate']= lastMessage.date;
-                this.onlineUsers[user._id][socket.id]['lastMessageSeen']= false
+
+                // Last Version----------
+                // this.onlineUsers[user._id][socket.id]['lastMessage']= lastMessage.msg;
+                // this.onlineUsers[user._id][socket.id]['lastDate']= lastMessage.date;
+                // this.onlineUsers[user._id][socket.id]['lastMessageSeen']= false
+
+                // New Version---------------
+                this.onlineUsers1[details.sid]['lastMessage']= lastMessage.msg;
+                this.onlineUsers1[details.sid]['lastDate']= lastMessage.date;
+                this.onlineUsers1[details.sid]['lastMessageSeen']= false;
+                this.onlineUsers1[details.sid]['created']= Date.now();
+                this.onlineUsers1[details.sid]['onlined']= true;
+                setOnlineUsers(this.onlineUsers1)
             }
             
             console.log(`User ${details.name?details.name:"مهمان"} joined`);
 
             // اینجا لیست اپراتور های مرچنت مورد نظر هست فعلا اتوماتیک به اپراتور اول پیام میره
-            const merchantOperators = getOperatorsByMerchantId(this.onlineOperators,user._id)
-            const opSocketId = Object.keys(merchantOperators)[0]
-            this.io.to(opSocketId).emit('updateUserList', Object.values(this.onlineUsers[user._id])); 
+            // const merchantOperators = getOperatorsByMerchantId(this.onlineOperators,user._id)
+            // const opSocketId = Object.keys(merchantOperators)[0];
+
+            // Last Version-----------
+            // this.io.to(opSocketId).emit('updateUserList', Object.values(this.onlineUsers[user._id])); 
+
+            // New Version-----------
+            const operatorsNew = getOperatorsByMerchantIdNew(this.onlineOperators1,user._id)
+            const merchantUsers = getUsersByMerchantIdNew(this.onlineUsers1,user._id)
+            operatorsNew.forEach(item => {
+                this.io.to(item.socketId).emit('updateUserList', merchantUsers || []);
+            })
+            // const userSocketIDS = getAllUsersSocketIds(this.onlineUsers1)
+            // this.io.to(opSocketId).emit('updateUserList', userSocketIDS); 
 
             // Get Questions
-            const client = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
-            const questions = await PreparedMessagesModel.find({merchantId:client.merchantId})
 
-            
+            // Last Version-----------
+            // const client = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+            // const questions = await PreparedMessagesModel.find({merchantId:client.merchantId})
+
+            // New Version-----------
+            const questions = await PreparedMessagesModel.find({merchantId:this.onlineUsers1[details.sid]["merchantId"]})
 
             // دریافت پیام های قبلی
             const lastMessages = await getMessageBySid(details.sid);
@@ -463,48 +560,81 @@ class ChatApplication {
         callback({success:true,token:newCookieToken})
     }
 
-    // Handle Disconnect Operator Or Client
+    // Handle Disconnect Operator Or Client --- Change New Version
     async handleDisconnect(socket){
-              
-        // اگراپراتور لفت داد
-        let MTIDOPERATOR;
-        for (const merchantId in this.onlineOperators) {
-            for (const socketId in this.onlineOperators[merchantId]) {
-                MTIDOPERATOR = this.onlineOperators[merchantId][socketId].merchantId
-                if(socketId === socket.id){
-                delete this.onlineOperators[merchantId][socket.id]
-                }
-            }
-        }   
-        const users = getUsersByMerchantId(this.onlineUsers,MTIDOPERATOR);
-        for (const key in users) {
-            // Unlock User this operator
-            // if(this.onlineUsers[MTIDOPERATOR][key]["targetOperator"] === socket.id){
-            //     this.onlineUsers[MTIDOPERATOR][key]["targetOperator"] = null;
-            //     this.onlineUsers[MTIDOPERATOR][key]["opName"] = null;
-            //     this.onlineUsers[MTIDOPERATOR][key]["opId"] = null
-            // }
 
-            // Update Operator list to Client
-            this.io.to(key).emit('updateOperatorList', Object.values(this.onlineOperators[MTIDOPERATOR] || []));
-        }
-   
-            
-        // اگر کلاینت لفت داد
-        let MTIDCLIENT;
-        for (const merchantId in this.onlineUsers) {
-            for (const socketId in this.onlineUsers[merchantId]) {
-                // console.log(onlineOperators[merchantId][socketId])
-                MTIDCLIENT = this.onlineUsers[merchantId][socketId].merchantId
-                if(socketId === socket.id){
-                delete this.onlineUsers[merchantId][socket.id]
-                }
+        // اگراپراتور لفت داد
+        // let MTIDOPERATOR;
+        // for (const merchantId in this.onlineOperators) {
+        //     for (const socketId in this.onlineOperators[merchantId]) {
+        //         MTIDOPERATOR = this.onlineOperators[merchantId][socketId].merchantId
+        //         if(socketId === socket.id){
+        //         delete this.onlineOperators[merchantId][socket.id]
+        //         }
+        //     }
+        // }  
+        // // updateoperatorlist 
+        // const users = getUsersByMerchantId(this.onlineUsers,MTIDOPERATOR);
+        // for (const key in users) {
+        //     // Update Operator list to Client
+        //     this.io.to(key).emit('updateOperatorList', Object.values(this.onlineOperators[MTIDOPERATOR] || []));
+        // }
+
+        console.log("disconecttttttttt",socket.id)
+
+
+        // Operator NewVersion-----------------------
+        let MTIDOPERATORNEW;
+        Object.keys(this.onlineOperators1).forEach(item => {
+            if(this.onlineOperators1[item]["socketId"] === socket.id){
+                this.onlineOperators1[item]["onlined"] = false;
+                MTIDOPERATORNEW = this.onlineOperators1[item].merchantId;
+                setOnlineOperators(this.onlineOperators1)
             }
-        }
-        const operators = getOperatorsByMerchantId(this.onlineOperators,MTIDCLIENT);
-        for (const key in operators) {
-            this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[MTIDCLIENT] || []));
-        }
+        })
+
+        const usersNew = getUsersByMerchantIdNew(this.onlineUsers1,MTIDOPERATORNEW)
+        usersNew.forEach(item => {
+            this.io.to(item.socketId).emit('updateUserList', usersNew || []);
+        })
+    
+        // اگر کلاینت لفت داد
+        // let MTIDCLIENT;
+        // for (const merchantId in this.onlineUsers) {
+        //     for (const socketId in this.onlineUsers[merchantId]) {
+        //         // console.log(onlineOperators[merchantId][socketId])
+        //         MTIDCLIENT = this.onlineUsers[merchantId][socketId].merchantId
+        //         if(socketId === socket.id){
+        //         delete this.onlineUsers[merchantId][socket.id]
+        //         }
+        //     }
+        // }
+        // // updateuserlist
+        // const operators = getOperatorsByMerchantId(this.onlineOperators,MTIDCLIENT);
+        // for (const key in operators) {
+        //     this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[MTIDCLIENT] || []));
+        // }
+
+        
+
+        // Client NewVersion-----------------------
+        let MTIDCLIENTNEW;
+        Object.keys(this.onlineUsers1).forEach(item => {
+            if(this.onlineUsers1[item]["socketId"] === socket.id){
+                this.onlineUsers1[item]["onlined"] = false;
+                MTIDCLIENTNEW = this.onlineUsers1[item].merchantId;
+                setOnlineUsers(this.onlineUsers1)
+            }
+        })
+
+        const operatorsNew = getOperatorsByMerchantIdNew(this.onlineOperators1,MTIDCLIENTNEW)
+        const merchantUsers = getUsersByMerchantIdNew(this.onlineUsers1,MTIDCLIENTNEW)
+
+        operatorsNew.forEach(item => {
+            console.log("soooc ",item.socketId)
+            this.io.to(item.socketId).emit('updateUserList', merchantUsers || []);
+        })
+     
 
     }
 
@@ -698,10 +828,18 @@ class ChatApplication {
         // }
     }
 
-    // Handle Send Message From Client To Operator
+
+
+    // Handle Send Message From Client To Operator --- Change New Version
     async handleSendMessageToOperator(socket, data , callback){
         const details = await verifyUserChatToken(data.cookieId)
-        const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
+        const cookieID = details.sid;
+
+        // Last Version -------
+        // const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+
+        // New Version ---------
+        const user = this.onlineUsers1[cookieID];
 
         if(data.qs){
                 data.time = Date.now();
@@ -714,13 +852,23 @@ class ChatApplication {
                 //     fullTime:data.fullTime
                 // });
 
-                this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
-                // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
-                this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
-                const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                // Last Version--------------
+                // this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
+                // this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
+                // const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                // for (const key in operators) {
+                //     this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                //     this.io.to(key).emit('messageSound', user);
+                // }
+
+                // New Version------------
+                this.onlineUsers1[cookieID]['lastMessage']= data.message
+                this.onlineUsers1[cookieID]['lastMessageSeen']= true
+                const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+                const usersMerchant = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId)
                 for (const key in operators) {
-                    this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                    this.io.to(key).emit('messageSound', user);
+                    this.io.to(key.socketId).emit('updateUserList', usersMerchant || []);
+                    this.io.to(key.socketId).emit('messageSound', user);
                 }
 
                 callback({
@@ -731,40 +879,46 @@ class ChatApplication {
     
                 return
         }
-       
-        // Check exist Operators
-        if(user && this.onlineOperators[user.merchantId] && Object.values(this.onlineOperators?.[user.merchantId]).length > 0){
-            
-            // Check target Operator 
-            if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+
+        // NewVersionCheck Operators
+        // Step1 Check Target Operator
+        // اگر اپراتور قبلا روش قفل شده بود و اگر آنلاین بود و اگر از مدت آفلاینیش زیاد گذشته بود
+        const nowOnlineOperators = getNowOnlineOperators(this.onlineOperators1,user.merchantId)
+        if(this.onlineUsers1[cookieID]["targetOperator"]){
+            const targetOperatorID = this.onlineUsers1[cookieID]["targetOperator"];
+            if(this.onlineOperators1[targetOperatorID]["onlined"] === true){
+                const targetOperatorSocketID = this.onlineOperators1[targetOperatorID]["socketId"];
                 data.time = Date.now();
                 data.fullTime = convertMillisToJalali(data.time)
 
-                this.io.to(user.targetOperator).emit('newMessageFromUser', {
+                this.io.to(targetOperatorSocketID).emit('newMessageFromUser', {
                     type:data.type,
                     socketID:socket.id,
                     message:data.message,
                     fullTime:data.fullTime
                 });
-                
+
                 const message = await SaveMessageClient(data,user);
 
                 // Set Last Message User List
-                this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
-                this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
-                // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
-                this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
-                const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
-                for (const key in operators) {
-                    this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                    this.io.to(key).emit('messageSound', user);
-                }
+                this.onlineUsers1[cookieID]['lastMessage']= data.message;
+                this.onlineUsers1[cookieID]['lastMessageTime']= Date.now();
+                this.onlineUsers1[cookieID]['lastMessageSeen']= true;
+                setOnlineUsers(this.onlineUsers1)
+
+                const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+                const users = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId);
+                operators.forEach(item => {
+                    this.io.to(item.socketId).emit('updateUserList', users || []);
+                    this.io.to(item.socketId).emit('messageSound', user);
+                })
+
 
                 // Send Telegram
-                const OnTelegram = true;
-                if(OnTelegram){
-                    await this.sendMessageToTelegram(user,details,data)
-                }
+                // const OnTelegram = true;
+                // if(OnTelegram){
+                //     await this.sendMessageToTelegram(user,details,data)
+                // }
 
                 callback({
                     success:true,
@@ -773,123 +927,224 @@ class ChatApplication {
                 })
 
             }else{
-                const freeFirstOperator = getFreeOperators(this.onlineOperators,this.onlineUsers,user.merchantId)
-                data.time = Date.now();
-                data.fullTime = convertMillisToJalali(data.time)
-                
-                this.io.to(freeFirstOperator).emit('newMessageFromUser', {
-                    type:data.type,
-                    socketID:socket.id,
-                    message:data.message,
-                    fullTime:data.fullTime
-                });
-                
-                await SaveMessageClient(data,user);
 
-                // Set Last Message User List
-                this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message;
-                this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false;
-                this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
-                const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
-                for (const key in operators) {
-                    this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                    this.io.to(key).emit('messageSound', user);
-                }
-                
-                // Send Telegram
-                const OnTelegram = true;
-                if(OnTelegram){
-                    await this.sendMessageToTelegram(user,details,data)
-                }
-
-                callback({
-                    success:true,
-                    message:"send",
-                    message:data
-                })
             }
-
-        }else{
-
-            // Save Message
+        }else if(nowOnlineOperators.length > 0){
             data.time = Date.now();
             data.fullTime = convertMillisToJalali(data.time)
-            await SaveMessageClient(data,user);
+            const message = await SaveMessageClient(data,user);
 
             // Set Last Message User List
-            this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
-            this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
-            this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
+            this.onlineUsers1[cookieID]['lastMessage']= data.message;
+            this.onlineUsers1[cookieID]['lastMessageTime']= Date.now();
+            this.onlineUsers1[cookieID]['lastMessageSeen']= true;
+            setOnlineUsers(this.onlineUsers1)
 
-            callback({
-                    success:true,
-                    message:"send",
-                    message:data
+            const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+            const users = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId);
+            operators.forEach(item => {
+                this.io.to(item.socketId).emit('updateUserList', users || []);
+                this.io.to(item.socketId).emit('messageSound', user);
             })
 
-            // Send Telegram
-            const OnTelegram = true;
-            if(OnTelegram){    
-                const filePath = path.join(__dirname, 'bots.json'); 
-                let rawData = fs.readFileSync(filePath, 'utf-8').trim();
-                this.verifiedBots = rawData ? JSON.parse(rawData) : {};
-                // اینجا باید شرط بذاری که اگر اپراتوری به این کاربر وصل شد دیگه پیامای کاربر به همه اپراتورا نره
-                await this.sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
 
-            }
+            // Send Telegram
+            // const OnTelegram = true;
+            // if(OnTelegram){
+            //     await this.sendMessageToTelegram(user,details,data)
+            // }
+
+            callback({
+                success:true,
+                message:"send",
+                message:data
+            })
+        }
+       
+        // Check exist Operators
+        // if(user && this.onlineOperators[user.merchantId] && Object.values(this.onlineOperators?.[user.merchantId]).length > 0){
+            
+        //     // Check target Operator 
+        //     if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+        //         data.time = Date.now();
+        //         data.fullTime = convertMillisToJalali(data.time)
+
+        //         this.io.to(user.targetOperator).emit('newMessageFromUser', {
+        //             type:data.type,
+        //             socketID:socket.id,
+        //             message:data.message,
+        //             fullTime:data.fullTime
+        //         });
+                
+        //         const message = await SaveMessageClient(data,user);
+
+        //         // Set Last Message User List
+        //         this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
+        //         this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
+        //         // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
+        //         this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
+        //         const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+        //         for (const key in operators) {
+        //             this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+        //             this.io.to(key).emit('messageSound', user);
+        //         }
+
+        //         // Send Telegram
+        //         const OnTelegram = true;
+        //         if(OnTelegram){
+        //             await this.sendMessageToTelegram(user,details,data)
+        //         }
+
+        //         callback({
+        //             success:true,
+        //             message:"send",
+        //             message:data
+        //         })
+
+        //     }else{
+        //         const freeFirstOperator = getFreeOperators(this.onlineOperators,this.onlineUsers,user.merchantId)
+        //         data.time = Date.now();
+        //         data.fullTime = convertMillisToJalali(data.time)
+                
+        //         this.io.to(freeFirstOperator).emit('newMessageFromUser', {
+        //             type:data.type,
+        //             socketID:socket.id,
+        //             message:data.message,
+        //             fullTime:data.fullTime
+        //         });
+                
+        //         await SaveMessageClient(data,user);
+
+        //         // Set Last Message User List
+        //         this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message;
+        //         this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false;
+        //         this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
+        //         const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+        //         for (const key in operators) {
+        //             this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+        //             this.io.to(key).emit('messageSound', user);
+        //         }
+                
+        //         // Send Telegram
+        //         const OnTelegram = true;
+        //         if(OnTelegram){
+        //             await this.sendMessageToTelegram(user,details,data)
+        //         }
+
+        //         callback({
+        //             success:true,
+        //             message:"send",
+        //             message:data
+        //         })
+        //     }
+
+        // }else{
+
+        //     // Save Message
+        //     data.time = Date.now();
+        //     data.fullTime = convertMillisToJalali(data.time)
+        //     await SaveMessageClient(data,user);
+
+        //     // Set Last Message User List
+        //     this.onlineUsers[user.merchantId][user.id]['lastMessage']= data.message
+        //     this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+        //     this.onlineUsers[user.merchantId][user.id]['lastMessageTime']= Date.now();
+
+        //     callback({
+        //             success:true,
+        //             message:"send",
+        //             message:data
+        //     })
+
+        //     // Send Telegram
+        //     const OnTelegram = true;
+        //     if(OnTelegram){    
+        //         const filePath = path.join(__dirname, 'bots.json'); 
+        //         let rawData = fs.readFileSync(filePath, 'utf-8').trim();
+        //         this.verifiedBots = rawData ? JSON.parse(rawData) : {};
+        //         await this.sendMessageToTelegramAllOperators(user,data,Object.keys(this.verifiedBots))
+
+        //     }
 
             
-            // this.handleSendMessageToAI(socket, data , callback)
-        }
+        //     // this.handleSendMessageToAI(socket, data , callback)
+        // }
 
     }
 
-    // Handle Send Message From Operator To Client
+    // Handle Send Message From Operator To Client --- Change New Version
     async handleSendMessageToUser(socket, data,callback){
-        // console.log("all",data)
-        const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,data.sid)
-        // console.log("Target User ",targetUser)
-        if (targetUser.id) {
-            data.time = Date.now();
-            data.fullTime = convertMillisToJalali(data.time)
-            this.io.to(targetUser.id).emit('newMessageFromOperator', data);
-            callback({success:true,message:data})
-        }
+        
+        // Last Version-----
+        // const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,data.sid)
+
+        // New Version --------
+        const targetUser = getUserBySocketIdNew(this.onlineUsers1,data.sid)
+
+        data.time = Date.now();
+        data.fullTime = convertMillisToJalali(data.time)
+        this.io.to(targetUser.socketId).emit('newMessageFromOperator', data);
+        callback({success:true,message:data})
+
         try {
             data.time = Date.now();
             data.fullTime = convertMillisToJalali(data.time)
 
             await SaveMessageOperator(data,targetUser,false);
-            // Set Last Message
-            this.onlineUsers[targetUser.merchantId][data.sid]['lastMessage']= data?.message;
-            this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageSeen']= true;
-            this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageOperatorTime']= Date.now();
+            // Set Last Message Last Version ------
+            // this.onlineUsers[targetUser.merchantId][data.sid]['lastMessage']= data?.message;
+            // this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageSeen']= true;
+            // this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageOperatorTime']= Date.now();
+
+            // New Version------------
+            this.onlineUsers1[targetUser.cookieId]['lastMessage']= data?.message;
+            this.onlineUsers1[targetUser.cookieId]['lastMessageSeen']= true;
+            this.onlineUsers1[targetUser.cookieId]['lastMessageOperatorTime']= Date.now();
+            setOnlineUsers(this.onlineUsers1)
 
             // Update Users List
-            const operators = getOperatorsByMerchantId(this.onlineOperators,targetUser.merchantId);
-            for (const key in operators) {
-                this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[targetUser.merchantId] || []));
-            }
+            const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,targetUser.merchantId);
+            const users = getUsersByMerchantIdNew(this.onlineUsers1,targetUser.merchantId)
+
+            operators.forEach(item => {
+                this.io.to(item.socketId).emit('updateUserList', users || []);
+            })
+
             callback({success:true,message:data})
         } catch (error) {
             callback({success:false,message:error.message})
         }
     }
 
-    // Get Last Messages
+    // Get Last Messages --- Change New Version
     async handleGetMessages(data, callback , socket){  
         const messages = await getMessageBySid(data.cookieId);
+        const cookieID = data.cookieId;
         
         // Get Operator by socket ID
-        const operator = getOperatorBySocketId(this.onlineOperators,socket.id)
+        // const operator = getOperatorBySocketId(this.onlineOperators,socket.id)
 
+        // New Version -----------
+        const operator = getOperatorBySocketIdNew(this.onlineOperators1,socket.id)
+        
         // Get User by SocketId
-        const client = getUserAndOperatorBySocketID(this.onlineUsers,data.id);
+        // const client = getUserAndOperatorBySocketID(this.onlineUsers,data.id);
 
+        // New Version---------
+        const client = this.onlineUsers1[cookieID];
         if (!client) return
 
-        // Check Locked User From Other Operator
-        if(client?.targetOperator && client?.targetOperator !== socket.id){
+        // Check Locked User From Other Operator Last Version --------
+        // if(client?.targetOperator && client?.targetOperator !== socket.id){
+        //     callback({
+        //         success:false,
+        //         message:"اپراتور دیگری در حال پاسخگویی میباشد"
+        //     })
+        //     return
+        // }
+
+        // New version---------
+        if(client?.targetOperator && client?.targetOperator !== operator.id){
             callback({
                 success:false,
                 message:"اپراتور دیگری در حال پاسخگویی میباشد"
@@ -905,17 +1160,26 @@ class ChatApplication {
         //     this.onlineUsers[lastUserLock.merchantId][lastUserLock.id]["opId"] = null;
         // }
 
-        // Lock User To Message Operator
-        this.onlineUsers[client.merchantId][data.id]["targetOperator"] = socket.id;
-        this.onlineUsers[client.merchantId][data.id]["opName"] = operator.firstName;
-        this.onlineUsers[client.merchantId][data.id]["opId"] = operator._id;
-        this.onlineUsers[client.merchantId][data.id]["lastMessageSeen"] = true;
+        // Lock User To Message Operator Last version --------
+        // this.onlineUsers[client.merchantId][data.id]["targetOperator"] = socket.id;
+        // this.onlineUsers[client.merchantId][data.id]["opName"] = operator.firstName;
+        // this.onlineUsers[client.merchantId][data.id]["opId"] = operator._id;
+        // this.onlineUsers[client.merchantId][data.id]["lastMessageSeen"] = true;
+
+        // New Version -----------
+        this.onlineUsers1[cookieID]["targetOperator"] = operator.id;
+        this.onlineUsers1[cookieID]["opName"] = operator.firstName;
+        this.onlineUsers1[cookieID]["opId"] = operator._id;
+        this.onlineUsers1[cookieID]["lastMessageSeen"] = true;
+        setOnlineUsers(this.onlineUsers1)
 
         // Refresh UserLists For Online Operators
-        const operators = getOperatorsByMerchantId(this.onlineOperators,client.merchantId);
-        for (const key in operators) {
-            this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[client.merchantId] || []));
-        }
+        const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,client.merchantId);
+        const users = getUsersByMerchantIdNew(this.onlineUsers1,client.merchantId)
+        operators.forEach(item => {
+            this.io.to(item.socketId).emit('updateUserList', users || []);
+        })
+
         callback({
             success:true,
             data:messages
@@ -923,21 +1187,25 @@ class ChatApplication {
         return
     }
 
-    // Close Chat
+    // Close Chat  --- Change New Version
     async handleCloseChat(socket,data, callback){
         // const operatorSocketId = socket.id;
         const userSocketId = data.sid;
-        const client = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
+        const client = getUserBySocketIdNew(this.onlineUsers1,userSocketId)
 
-        this.onlineUsers[client.merchantId][client.id]["targetOperator"] = null;
-        this.onlineUsers[client.merchantId][client.id]["opName"] = null;
-        this.onlineUsers[client.merchantId][client.id]["opId"] = null;
+        this.onlineUsers1[client.cookieId]["targetOperator"] = null;
+        this.onlineUsers1[client.cookieId]["opName"] = null;
+        this.onlineUsers1[client.cookieId]["opId"] = null;
+        setOnlineUsers(this.onlineUsers1)
 
         // Refresh UserLists For Online Operators
-        const operators = getOperatorsByMerchantId(this.onlineOperators,client.merchantId);
-        for (const key in operators) {
-            this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[client.merchantId] || []));
-        }
+        const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,client.merchantId);
+        const users = getUsersByMerchantIdNew(this.onlineUsers1,client.merchantId)
+
+        operators.forEach(item => {
+            this.io.to(item.socketId).emit('updateUserList', users || []);
+        })
+
         callback({
             success:true,
         })
@@ -946,26 +1214,26 @@ class ChatApplication {
         
     }
 
-    // Get Questions 
+    // Get Questions  --- Change New Version
     async handleGetQuestions(callback,data,socket){
-        const client = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+        const client = getUserBySocketIdNew(this.onlineUsers1,socket.id)
         const questions = await PreparedMessagesModel.find({merchantId:client.merchantId})
 
         callback(questions)
     }
 
-    // Send File From Client To Operator
+    // Send File From Client To Operator --- Change New Version
     async handleClientSendFile(socket, data, callback){
-
-        const user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id);
+        const user = getUserBySocketIdNew(this.onlineUsers1,socket.id)
         if(!user) callback({success:false,message:"خطای سیستمی"})
+        const cookieID = user.cookieId
             
         // let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId]).length > 0 ? Object.keys(this.onlineOperators[user.merchantId])[0]:null;
         try {
             
             // فایل را آپلود می‌کنیم
             const fileUpload = await uploadFile(data);
-            // console.log(data)
+            console.log("----",fileUpload)
 
             if(fileUpload){
                 let datanew = {
@@ -982,27 +1250,105 @@ class ChatApplication {
                 await SaveMessageClient(datanew,user);
 
                 // Check target Operator 
-                if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+                // if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+
+                //     // Set Last Message User List
+                //     this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                //     // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
+                //     this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
+                //     const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                //     for (const key in operators) {
+                //         this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                //         this.io.to(key).emit('messageSound', user);
+                //     }
+
+                // }else{
+                //     // Set Last Message User List
+                //     this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                //     this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
+                //     const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
+                //     for (const key in operators) {
+                //         this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
+                //         this.io.to(key).emit('messageSound', user);
+                //     }
+                // }
+
+                const nowOnlineOperators = getNowOnlineOperators(this.onlineOperators1,user.merchantId)
+                if(this.onlineUsers1[cookieID]["targetOperator"]){
+                    const targetOperatorID = this.onlineUsers1[cookieID]["targetOperator"];
+                    if(this.onlineOperators1[targetOperatorID]["onlined"] === true){
+                        const targetOperatorSocketID = this.onlineOperators1[targetOperatorID]["socketId"];
+                        data.time = Date.now();
+                        data.fullTime = convertMillisToJalali(data.time)
+
+                        this.io.to(targetOperatorSocketID).emit('newMessageFromUser', {
+                            type:data.type,
+                            socketID:socket.id,
+                            message:data.message,
+                            fullTime:data.fullTime
+                        });
+
+                        const message = await SaveMessageClient(data,user);
+
+                        // Set Last Message User List
+                        this.onlineUsers1[cookieID]['lastMessage']= "فایل";
+                        this.onlineUsers1[cookieID]['lastMessageTime']= Date.now();
+                        this.onlineUsers1[cookieID]['lastMessageSeen']= true;
+                        setOnlineUsers(this.onlineUsers1)
+
+                        const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+                        const users = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId);
+                        operators.forEach(item => {
+                            this.io.to(item.socketId).emit('updateUserList', users || []);
+                            this.io.to(item.socketId).emit('messageSound', user);
+                        })
+
+
+                        // Send Telegram
+                        // const OnTelegram = true;
+                        // if(OnTelegram){
+                        //     await this.sendMessageToTelegram(user,details,data)
+                        // }
+
+                        callback({
+                            success:true,
+                            message:"send",
+                            message:data
+                        })
+
+                    }else{
+
+                    }
+                }else if(nowOnlineOperators.length > 0){
+                    data.time = Date.now();
+                    data.fullTime = convertMillisToJalali(data.time)
+                    const message = await SaveMessageClient(data,user);
 
                     // Set Last Message User List
-                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
-                    // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
-                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
-                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
-                    for (const key in operators) {
-                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                        this.io.to(key).emit('messageSound', user);
-                    }
+                    this.onlineUsers1[cookieID]['lastMessage']= data.message;
+                    this.onlineUsers1[cookieID]['lastMessageTime']= Date.now();
+                    this.onlineUsers1[cookieID]['lastMessageSeen']= true;
+                    setOnlineUsers(this.onlineUsers1)
 
-                }else{
-                    // Set Last Message User List
-                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
-                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
-                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
-                    for (const key in operators) {
-                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                        this.io.to(key).emit('messageSound', user);
-                    }
+                    const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+                    const users = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId);
+                    operators.forEach(item => {
+                        this.io.to(item.socketId).emit('updateUserList', users || []);
+                        this.io.to(item.socketId).emit('messageSound', user);
+                    })
+
+
+                    // Send Telegram
+                    // const OnTelegram = true;
+                    // if(OnTelegram){
+                    //     await this.sendMessageToTelegram(user,details,data)
+                    // }
+
+                    callback({
+                        success:true,
+                        message:"send",
+                        message:data
+                    })
                 }
 
                 callback({
@@ -1023,10 +1369,10 @@ class ChatApplication {
         }
     }
 
-    // Send File From Operator To Client
+    // Send File From Operator To Client --- Change New Version
     async handleOperatorSendFile(socket, data, callback){
         
-        const user = getUserAndOperatorBySocketID(this.onlineUsers,data.socketID)
+        const user = getUserBySocketIdNew(this.onlineUsers1,data.socketID)
         // let operatorSocketId = Object.keys(onlineOperators[user.merchantId])[0];
         try {
             // فایل را آپلود می‌کنیم
@@ -1053,28 +1399,34 @@ class ChatApplication {
                 await SaveMessageOperator(datanew,user);
 
                 // Check target Operator 
-                if(user.targetOperator && this.onlineOperators[user.merchantId][user.targetOperator]){
+                if(user.targetOperator){
 
                     // Set Last Message User List
-                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
+                    this.onlineUsers1[user.cookieId]['lastMessage']= "فایل"
                     // if(this.onlineUsers[user.merchantId][user.id]['targetOperator']===)
-                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= true
-                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
-                    for (const key in operators) {
-                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                        this.io.to(key).emit('messageSound', user);
-                    }
+                    this.onlineUsers1[user.cookieId]['lastMessageSeen']= true;
+
+                    const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+                    const users = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId)
+                    operators.forEach(item => {
+                        this.io.to(item.socketId).emit('updateUserList', users || []);
+                        this.io.to(item.socketId).emit('messageSound', user);
+                    })
+
 
                 }else{
                     // Set Last Message User List
-                    this.onlineUsers[user.merchantId][user.id]['lastMessage']= "فایل"
-                    this.onlineUsers[user.merchantId][user.id]['lastMessageSeen']= false
-                    const operators = getOperatorsByMerchantId(this.onlineOperators,user.merchantId);
-                    for (const key in operators) {
-                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[user.merchantId] || []));
-                        this.io.to(key).emit('messageSound', user);
-                    }
+                    this.onlineUsers1[user.cookieId]['lastMessage']= "فایل"
+                    this.onlineUsers1[user.cookieId]['lastMessageSeen']= true;
+                    const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
+                    const users = getUsersByMerchantIdNew(this.onlineUsers1,user.merchantId)
+                    operators.forEach(item => {
+                        this.io.to(item.socketId).emit('updateUserList', users || []);
+                        this.io.to(item.socketId).emit('messageSound', user);
+                    })
                 }
+
+                
 
                 callback({
                     success:true,
@@ -1095,6 +1447,7 @@ class ChatApplication {
         }
     }
 
+    // --- Change New Version
     async handleIsTyping(socket, data){
         const { isTyping, userType,socketID } = data; // isTyping (true/false), userType ('user' or 'operator')
 
@@ -1102,12 +1455,14 @@ class ChatApplication {
         if(userType === "operator"){
             this.io.to(socketID).emit('isTyping', { isTyping });
         }else{
-            user = getUserAndOperatorBySocketID(this.onlineUsers,socket.id)
-            if(this.onlineOperators[user?.merchantId]){
-                let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId])[0];
-                this.io.to(operatorSocketId).emit('isTyping', { isTyping,socketID:socket.id });
-                // user = getUserAndOperatorBySocketID(this.onlineUsers, socket.id);
-            }
+            user = getUserBySocketIdNew(this.onlineUsers1,socket.id)
+
+            this.io.to(this.onlineOperators1[user.targetOperator].socketId).emit('isTyping', { isTyping,socketID:socket.id });
+            // if(this.onlineOperators1[user?.merchantId]){
+            //     let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId])[0];
+            //     this.io.to(operatorSocketId).emit('isTyping', { isTyping,socketID:socket.id });
+            //     // user = getUserAndOperatorBySocketID(this.onlineUsers, socket.id);
+            // }
         }
 
     }

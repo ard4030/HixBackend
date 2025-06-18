@@ -9,6 +9,8 @@ const { PlanModel } = require('../model/PlanModel');
 const { UserModel } = require('../model/UserModel');
 const Zibal = require('zibal');
 const cache = require('memory-cache');
+const fs = require('fs');
+const path = require('path');
 
 
 // require('dotenv').config();
@@ -556,6 +558,112 @@ const setCache = () => {
 }
 
 
+// New Version Functions
+
+const setOnlineUsers = (onlineusers) =>{
+    try {
+        const filePath = path.join(__dirname, '../chat/onlineusers.json'); 
+        const jsonData = JSON.stringify(onlineusers);
+        fs.writeFileSync(filePath, jsonData);
+        console.log("savedUsers")
+    } catch (error) {
+        console.log("inja")
+        console.log(error.message)
+    }
+}
+
+const setOnlineOperators = (onlineoperators) =>{
+    try {
+        const filePath = path.join(__dirname, '../chat/onlineoperators.json'); 
+        const jsonData = JSON.stringify(onlineoperators);
+        fs.writeFileSync(filePath, jsonData);
+        
+    } catch (error) {
+        console.log("inja")
+        console.log(error.message)
+    }
+}
+
+// گرفتن سوکت آی دی همه سوزر ها
+const getAllUsersSocketIds = (users) => {
+    let socketIDS = [];
+    Object.keys(users).map(item => {
+        socketIDS.push(users[item].socketId)
+    })
+    return socketIDS
+}
+
+// گرفتن سوکت آی دی یوزر های یک مرچنت
+const getUsersSocketIdByMerchantIdNew = (users,merchantId) => {
+    let socketIDS = [];
+    Object.keys(users).map(item => {
+        if(String(users[item]["merchantId"]) === String(merchantId)){
+            socketIDS.push(users[item].socketId)
+        }
+    })
+    return socketIDS
+}
+
+// گرفتن سوکت آی دی اپراتور های یک مرچنت
+const getAllOperatorsSocketIdByMerchant = (operators,merchantId) => {
+    let socketIDS = [];
+    Object.keys(operators).map(item => {
+        if(String(operators[item]["merchantId"]) === String(merchantId)){
+            socketIDS.push(operators[item].socketId)
+        }
+    })
+    return socketIDS
+}
+
+// گرفتن اطلاعات کامل اپراتور های یک مرچنت
+const getOperatorsByMerchantIdNew = (operators,merchantId) => {
+    let data = [];
+    Object.keys(operators).map(item => {
+        if(String(operators[item]["merchantId"]) === String(merchantId)){
+            data.push(operators[item])
+        }
+    })
+    return data
+}
+
+// گرفتن اطلاعات کامل يوزر های یک مرچنت
+const getUsersByMerchantIdNew = (users,merchantId) => {
+    let data = [];
+    Object.keys(users).map(item => {
+        if(String(users[item]["merchantId"]) === String(merchantId)){
+            data.push(users[item])
+        }
+    })
+    return data
+}
+
+// گرفتن اپراتور های درحال حاضر آنلاین یک مرچنت
+const getNowOnlineOperators = (operators,merchantId) => {
+    let onlined = [];
+    Object.keys(operators).map(item => {
+        if(String(operators[item]["merchantId"]) === String(merchantId)){
+            if(operators[item]["onlined"] === true){
+                onlined.push(operators[item])
+            }
+        }
+    })
+
+    return onlined;
+}
+
+// گرفتن اپراتور بر اساس سوکت آی دی
+const getOperatorBySocketIdNew = (operators,socketId) => {
+    const values = Object.values(operators);
+    const find = values.find(item => String(item.socketId) === String(socketId));
+    return find;
+}
+
+// گرفتن یوزر با سوکت آی دی
+const getUserBySocketIdNew = (users,socketId) => {
+    const values = Object.values(users);
+    const find = values.find(item => String(item.socketId) === String(socketId));
+    return find;
+}
 
 module.exports = {
     hashPassword,unhashPassword,SignAccessToken,verifyJwtToken,
@@ -564,5 +672,10 @@ module.exports = {
     getFileLink,getOperatorBySocketId,getLockUser,getFreeOperators,getLastMessage,
     convertMillisToJalali,uploadVoice,crawlProductPage,getUrlsMultiSitemap,getAllProductUrlsFromSitemaps,
     getProductsDataCrawler,getPlan,checkExpirePlan,sendReqZibal,uploadFileOperator,
-    setCache
+    setCache,
+
+    // News
+    setOnlineUsers,getAllUsersSocketIds,setOnlineOperators,getAllOperatorsSocketIdByMerchant,
+    getUsersSocketIdByMerchantIdNew,getOperatorsByMerchantIdNew,getUsersByMerchantIdNew,getNowOnlineOperators,
+    getOperatorBySocketIdNew,getUserBySocketIdNew
 }
