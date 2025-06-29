@@ -16,7 +16,8 @@ const { getCookie, generateUserChatToken, verifyUserChatToken, getUserAndOperato
      getUsersByMerchantIdNew,
      getNowOnlineOperators,
      getOperatorBySocketIdNew,
-     getUserBySocketIdNew} = require("../utils/functions");
+     getUserBySocketIdNew,
+     getChatIDSMerchantOperators} = require("../utils/functions");
 const { OperatorsModel } = require("../model/OperatorsModel");
 const { UserModel } = require("../model/UserModel");
 const { SaveMessageClient, SaveMessageOperator, getMessageBySid } = require("./chat.service");
@@ -53,9 +54,9 @@ class ChatApplication {
         this.userToOperatorMap = {}; // ذخیره ارتباط کاربران و اپراتورها به صورت آبجکت
         this.verifiedBots = {}; //ربات هایی که وریفای میشن
 
-        this.TBL=""
-        // this.TBL = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
-        // this.InitialBots()
+        // this.TBL=""
+        this.TBL = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+        this.InitialBots()
 
         this.setSocketListeners();
 
@@ -67,7 +68,7 @@ class ChatApplication {
         // Testing New OnlineUsers
         this.onlineUsers1 = {};
         this.onlineOperators1 = {};
-        // this.onlineUsers1 = this.getOnlineUsers();
+        this.onlineUsers1 = this.getOnlineUsers();
     }
 
     // Initial Telegram Bots
@@ -116,14 +117,19 @@ class ChatApplication {
                 const operatorTelegramId = query.from.id;
                 const userSocketId = query.data.substring(12);
                 const chatId = query.message.from.id;
-                const user = getUserAndOperatorBySocketID(this.onlineUsers,userSocketId);
+                const user = getUserBySocketIdNew(this.onlineUsers1,userSocketId);
 
-                if(user){
+
+
+                 if(user){
                     // Lock User From Operator
-                    if(this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === operatorTelegramId){
+                    if(this.onlineUsers1[user.cookieId]["targetTelegramId"] === operatorTelegramId){
                         this.TBL.sendMessage(operatorTelegramId,`قبلا چت رو پذیرفتید`, {})
-                    }else if (this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === undefined){
-                        this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] = operatorTelegramId;
+                    }else if (this.onlineUsers1[user.cookieId]["targetTelegramOperator"] === undefined){
+                        this.onlineUsers1[user.cookieId]["targetTelegramOperator"] = this.verifiedBots[operatorTelegramId].merchantId;
+                        this.onlineUsers1[user.cookieId]["targetTelegramId"] = operatorTelegramId;
+                        this.onlineUsers1[user.cookieId]["targetTelegramChatId"] = chatId;
+                        setOnlineUsers(this.onlineUsers1)
                         this.TBL.sendMessage(operatorTelegramId, `🟢 چت با کاربر (SID_${userSocketId}) پذیرفته شد.\n\n🖊️ لطفاً پاسخ خود را تایپ کنید:`,
                             {
                                 // reply_to_message_id: query.message.message_id,
@@ -135,7 +141,7 @@ class ChatApplication {
                         const chatIDS = Object.keys(this.verifiedBots).map(item => {
                             if(item !== operatorTelegramId) return item
                         });
-                        console.log("chatIDS" ,chatIDS)
+                        // console.log("chatIDS" ,chatIDS)
                         try {
                             const sendPromises = chatIDS.map(item =>
                                 this.TBL.sendMessage(item,`کاربر با نام ${user?.name} و سوکت ایدی SID_${user?.id} به اپراتور ${this.verifiedBots?.[operatorTelegramId]?.userName} متصل شد`,{
@@ -177,6 +183,66 @@ class ChatApplication {
                     }
                 }
 
+                // Last Version
+                // if(user){
+                //     // Lock User From Operator
+                //     if(this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === operatorTelegramId){
+                //         this.TBL.sendMessage(operatorTelegramId,`قبلا چت رو پذیرفتید`, {})
+                //     }else if (this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] === undefined){
+                //         this.onlineUsers[user.merchantId][userSocketId]["targetTelegramOperator"] = operatorTelegramId;
+                //         this.TBL.sendMessage(operatorTelegramId, `🟢 چت با کاربر (SID_${userSocketId}) پذیرفته شد.\n\n🖊️ لطفاً پاسخ خود را تایپ کنید:`,
+                //             {
+                //                 // reply_to_message_id: query.message.message_id,
+                //                 // reply_markup: {
+                //                 //     force_reply: true
+                //                 // }
+                //             })
+
+                //         const chatIDS = Object.keys(this.verifiedBots).map(item => {
+                //             if(item !== operatorTelegramId) return item
+                //         });
+                //         console.log("chatIDS" ,chatIDS)
+                //         try {
+                //             const sendPromises = chatIDS.map(item =>
+                //                 this.TBL.sendMessage(item,`کاربر با نام ${user?.name} و سوکت ایدی SID_${user?.id} به اپراتور ${this.verifiedBots?.[operatorTelegramId]?.userName} متصل شد`,{
+                //                     reply_to_message_id : query.message.message_id,
+                //                     reply_markup : {
+                //                         force_reply : true
+                //                     }
+                //                 })
+                //                 // fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
+                //                 //     method: 'POST',
+                //                 //     headers: { 'Content-Type': 'application/json' },
+                //                 //     body: JSON.stringify({
+                //                 //         chat_id: item,
+                //                 //         text: `
+                //                 //         کاربر با نام
+                //                 //         ${user.name}
+                //                 //         و سوکت آی دی 
+                //                 //         SID_${user.id}
+                //                 //         به اپراتور
+                //                 //     ${this.verifiedBots[operatorTelegramId].userName}
+                                               
+
+                //                 //         `,
+                //                 //     }),
+                //                 // })
+                //             );
+
+                //             await Promise.all(sendPromises); // منتظر بمان تا همه اجرا شوند
+                //             return true
+                //         } catch (error) {
+                //             return false
+                //             console.error("Error sending message:", error.message);
+                //         }
+
+
+                //     }else{
+                        
+                //         this.TBL.sendMessage(operatorTelegramId,'اپراتور دیگری در حال پاسخگویی به این کاربر است')
+                //     }
+                // }
+
 
             }
 
@@ -203,8 +269,6 @@ class ChatApplication {
             return {}; // یا throw کن اگه بخوای
         }
     }
-
-
 
     // Set Socket Options
     getSocketOptions() {
@@ -463,11 +527,14 @@ class ChatApplication {
             // };
 
             // New Version---------------
+
+            console.log("pppp ",this.onlineUsers1)
   
             if (!this.onlineUsers1[details?.sid]) {
                 this.onlineUsers1[details.sid] = {};
             }
             this.onlineUsers1[details.sid] = {
+                ...this.onlineUsers1[details.sid],
                 socketId : socket.id,
                 userData:details.userData,
                 name:details.userData?.name?details.userData?.name:"مهمان",
@@ -678,54 +745,61 @@ class ChatApplication {
 
     async sendMessageToTelegram(user,details,data){
         // const merchantOperators = this.onlineOperators[user.merchantId];
-        // console.log("User ",user)
+        console.log("User ",user)
         // console.log("Details ",details)
         // console.log("Data ", data )
-        let chatId = null;
-        for (const key in this.verifiedBots) {
-            if(String(this.verifiedBots[key].merchantId) === String(user.merchantId)){
-                chatId=key;
-                break;
-            }
-        }  
 
-        try {
-            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: chatId,
-                    text: `
-                    کاربر::${user.name}\nبا سوکت زیر
-                    SID_${user.id}
-                    
-                    ${data.message}
-                    `,
-                }),
-            });
-            
-        } catch (error) {
-            console.log(error.message)
-        }
-    }
+        // targetTelegramOperator
+        // targetTelegramChatId
 
-    async sendMessageToTelegramAllOperators(user, data, chatIDS) {
-
-        let inline_keyboard = [];
-        // Check Lock Operators
-        const targetTelegramOperator = this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"] || null;
-        if(targetTelegramOperator){
+        if(user && user?.targetTelegramId){
+             this.TBL.sendMessage(user.targetTelegramId,`
+                کاربر::${user.name}\nبا سوکت زیر
+                SID_${user.id}
+                
+                ${data.message}
+                `)
 
         }else{
-            inline_keyboard = [
+
+            // Get ChatIDS Merchant Operators
+            let chatIDS = getChatIDSMerchantOperators(this.verifiedBots,user.merchantId);
+            const sendToAll = await this.sendMessageToTelegramAllOperators(user,data,chatIDS)
+        }
+        
+        
+
+    }
+
+    // New Edit
+    async sendMessageToTelegramAllOperators(user, data, chatIDS) {
+
+        // let inline_keyboard = [];
+        // // Check Lock Operators
+        // // const user = getUserBySocketIdNew()
+        // const targetTelegramOperator = this.onlineUsers[user.merchantId][data.id]?.["targetTelegramOperator"] || null;
+        
+        // if(targetTelegramOperator){
+
+        // }else{
+        //     inline_keyboard = [
+        //         [
+        //             {
+        //                 text: '✅ قبول چت',
+        //                 callback_data: `accept_chat_${user.id}`
+        //             }
+        //         ]
+        //     ];
+        // }
+
+        let inline_keyboard = [
                 [
                     {
                         text: '✅ قبول چت',
                         callback_data: `accept_chat_${user.id}`
                     }
                 ]
-            ];
-        }
+        ];
 
 
 
@@ -760,9 +834,9 @@ class ChatApplication {
             const match = msg.reply_to_message.text.match(/SID_+([^\s]+)/);
             const socketID = match ? match[1] : null;
 
-            const targetUser = getUserAndOperatorBySocketID(this.onlineUsers,socketID)
-            const targetTelegram = targetUser?.["targetTelegramOperator"] || null;
-            console.log("targetTelegram" , targetTelegram)
+            const targetUser = getUserBySocketIdNew(this.onlineUsers1,socketID)
+            const targetTelegram = targetUser?.["targetTelegramId"] || null;
+            console.log("targetTelegramId" , targetTelegram)
             if(targetTelegram && targetTelegram !== chatId){
                    this.TBL.sendMessage(chatId,"عوضی این اپراتور با کس دیگه ای حرف میزنه")
                    return  
@@ -789,14 +863,19 @@ class ChatApplication {
                     await SaveMessageOperator(data,targetUser,false);
     
                     // Set Last Message
-                    this.onlineUsers[targetUser.merchantId][data.sid]['lastMessage']= data?.message;
-                    this.onlineUsers[targetUser.merchantId][data.sid]['lastMessageSeen']= true
+                    this.onlineUsers1[targetUser.cookieId]['lastMessage']= data?.message;
+                    this.onlineUsers1[targetUser.cookieId]['lastMessageSeen']= true;
+                    setOnlineUsers(this.onlineUsers1)
     
                     // Update Users List
-                    const operators = getOperatorsByMerchantId(this.onlineOperators,targetUser.merchantId);
-                    for (const key in operators) {
-                        this.io.to(key).emit('updateUserList', Object.values(this.onlineUsers[targetUser.merchantId] || []));
-                    }
+                    const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,targetUser.merchantId);
+                    const users = getUsersByMerchantIdNew(this.onlineUsers1,targetUser.merchantId);
+
+                    operators.forEach(item => {
+                        this.io.to(item.socketId).emit('updateUserList', users || []);
+                    })
+
+                    
     
                 }
                 // console.log(socketID)
@@ -909,10 +988,10 @@ class ChatApplication {
 
 
                 // Send Telegram
-                // const OnTelegram = true;
-                // if(OnTelegram){
-                //     await this.sendMessageToTelegram(user,details,data)
-                // }
+                const OnTelegram = true;
+                if(OnTelegram){
+                    await this.sendMessageToTelegram(user,details,data)
+                }
 
                 callback({
                     success:true,
@@ -943,10 +1022,32 @@ class ChatApplication {
 
 
             // Send Telegram
-            // const OnTelegram = true;
-            // if(OnTelegram){
-            //     await this.sendMessageToTelegram(user,details,data)
-            // }
+            const OnTelegram = true;
+            if(OnTelegram){
+                await this.sendMessageToTelegram(user,details,data)
+            }
+
+            callback({
+                success:true,
+                message:"send",
+                message:data
+            })
+        }else{
+            data.time = Date.now();
+            data.fullTime = convertMillisToJalali(data.time)
+            const message = await SaveMessageClient(data,user);
+
+            // Set Last Message User List
+            this.onlineUsers1[cookieID]['lastMessage']= data.message;
+            this.onlineUsers1[cookieID]['lastMessageTime']= Date.now();
+            this.onlineUsers1[cookieID]['lastMessageSeen']= true;
+            setOnlineUsers(this.onlineUsers1)
+
+            // Send Telegram
+            const OnTelegram = true;
+            if(OnTelegram){
+                await this.sendMessageToTelegram(user,details,data)
+            }
 
             callback({
                 success:true,
@@ -1450,8 +1551,9 @@ class ChatApplication {
             this.io.to(socketID).emit('isTyping', { isTyping });
         }else{
             user = getUserBySocketIdNew(this.onlineUsers1,socket.id)
-
-            this.io.to(this.onlineOperators1[user.targetOperator].socketId).emit('isTyping', { isTyping,socketID:socket.id });
+            if(this?.onlineOperators1[user?.targetOperator]){
+                this.io.to(this.onlineOperators1[user.targetOperator].socketId).emit('isTyping', { isTyping,socketID:socket.id });
+            }
             // if(this.onlineOperators1[user?.merchantId]){
             //     let operatorSocketId = Object.keys(this.onlineOperators[user.merchantId])[0];
             //     this.io.to(operatorSocketId).emit('isTyping', { isTyping,socketID:socket.id });

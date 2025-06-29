@@ -665,6 +665,17 @@ const getUserBySocketIdNew = (users,socketId) => {
     return find;
 }
 
+const getChatIDSMerchantOperators = (allbots,merchantId) => {
+    let chatIDS = [];
+    Object.keys(allbots).forEach(item => {
+        if(String(allbots[item].merchantId) === String(merchantId)){
+            chatIDS.push(item)
+        }
+    })
+
+    return chatIDS
+}
+
 module.exports = {
     hashPassword,unhashPassword,SignAccessToken,verifyJwtToken,
     generateApiKey,pushUnique,getCookie,generateUserChatToken,verifyUserChatToken,
@@ -677,5 +688,5 @@ module.exports = {
     // News
     setOnlineUsers,getAllUsersSocketIds,setOnlineOperators,getAllOperatorsSocketIdByMerchant,
     getUsersSocketIdByMerchantIdNew,getOperatorsByMerchantIdNew,getUsersByMerchantIdNew,getNowOnlineOperators,
-    getOperatorBySocketIdNew,getUserBySocketIdNew
+    getOperatorBySocketIdNew,getUserBySocketIdNew,getChatIDSMerchantOperators
 }
