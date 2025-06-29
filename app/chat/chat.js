@@ -826,6 +826,10 @@ class ChatApplication {
         }
     }
 
+    async sendMessageToTelegramOneOperator(user, data, chatIDS){
+        
+    }
+
     async sendMessageTelegramToUser(msg,chatId){
  
         console.log(`[${this.verifiedBots[chatId].userName}] پیام دریافت شد از ${chatId}: ${msg.text}`);  
