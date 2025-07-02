@@ -1242,8 +1242,11 @@ class ChatApplication {
         //     return
         // }
 
+        // console.log("879879",operator)
+        // console.log("879879",client)
+
         // New version---------
-        if(client?.targetOperator && client?.targetOperator !== operator.id){
+        if(client?.targetOperator && String(client?.targetOperator) !== String(operator.id)){
             callback({
                 success:false,
                 message:"اپراتور دیگری در حال پاسخگویی میباشد"
