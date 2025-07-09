@@ -1595,7 +1595,6 @@ class ChatApplication {
             arrayFilters: [
             {
                 "msg.id": { $in: messagesId },
-                "msg.sender": sender
             }
             ]
         }
