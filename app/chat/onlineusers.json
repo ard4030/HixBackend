@@ -1,1 +1,30 @@
-{"oiGY0o-GoTyq5OSzAAAH":{"socketId":"KJHymfqEG7Yf_OBvAAAE","userData":{"name":"علی رضا"},"name":"علی رضا","id":"KJHymfqEG7Yf_OBvAAAE","cookieId":"oiGY0o-GoTyq5OSzAAAH","merchantId":"672762cd980313553afed313","targetOperator":"683af223c0063ebd5ebab869","opName":"حمید","lastMessage":"7777","lastDate":{"year":1404,"month":4,"day":4,"monthName":"تیر","hour":"11","minute":"50","ampm":"AM","formattedDate":"1404/04/04"},"lastMessageSeen":true,"created":1751442064958,"onlined":false,"lastMessageTime":1750839596199,"targetTelegramOperator":"672762cd980313553afed313","targetTelegramId":350185075,"targetTelegramChatId":7932459058}}
+{
+  "oiGY0o-GoTyq5OSzAAAH": {
+    "socketId": "KJHymfqEG7Yf_OBvAAAE",
+    "userData": { "name": "علی رضا" },
+    "name": "علی رضا",
+    "id": "KJHymfqEG7Yf_OBvAAAE",
+    "cookieId": "oiGY0o-GoTyq5OSzAAAH",
+    "merchantId": "672762cd980313553afed313",
+    "targetOperator": "683af223c0063ebd5ebab869",
+    "opName": "حمید",
+    "lastMessage": "7777",
+    "lastDate": {
+      "year": 1404,
+      "month": 4,
+      "day": 4,
+      "monthName": "تیر",
+      "hour": "11",
+      "minute": "50",
+      "ampm": "AM",
+      "formattedDate": "1404/04/04"
+    },
+    "lastMessageSeen": true,
+    "created": 1751442064958,
+    "onlined": false,
+    "lastMessageTime": 1750839596199,
+    "targetTelegramOperator": "672762cd980313553afed313",
+    "targetTelegramId": 350185075,
+    "targetTelegramChatId": 7932459058
+  }
+}

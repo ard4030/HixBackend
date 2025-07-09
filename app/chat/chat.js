@@ -333,6 +333,9 @@ class ChatApplication {
             socket.on("clientSendFile", (data, callback) => this.handleClientSendFile(socket, data, callback));
             socket.on("operatorSendFile", (data, callback) => this.handleOperatorSendFile(socket, data, callback));
             socket.on('isTyping', (data) => this.handleIsTyping(socket, data));
+            socket.on("seenmessages", (data, callback) => this.handleSeenMessage(socket, data, callback));
+
+            
         });
     }
 
@@ -1568,6 +1571,41 @@ class ChatApplication {
             // }
         }
 
+    }
+
+    // --- Read Messages
+    async handleSeenMessage(socket, data, callback) {
+    try {
+        const messagesId = data.messages.map(id => new ObjectId(id));
+        const sender = data.sender;
+        const cookieId = data.cookieId;
+
+        const result = await ChatModel.updateOne(
+        {
+            sid: cookieId,
+            "messages._id": { $in: messagesId }
+        },
+        {
+            $set: {
+            "messages.$[msg].seen": true
+            }
+        },
+        {
+            arrayFilters: [
+            {
+                "msg._id": { $in: messagesId },
+                "msg.sender": sender
+            }
+            ]
+        }
+        );
+
+        callback({ success: true, modified: result.modifiedCount });
+
+    } catch (error) {
+        console.error("handleSeenMessage error:", error);
+        callback({ success: false, error: error.message });
+    }
     }
 
 }
