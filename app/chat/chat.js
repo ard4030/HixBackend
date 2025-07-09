@@ -31,6 +31,7 @@ const { TelegramBotListener } = require("./TelegramBotManager");
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require('fs');
 const path = require('path');
+const { default: mongoose } = require("mongoose");
 
 
 // SendToTelegram Test
@@ -1576,7 +1577,7 @@ class ChatApplication {
     // --- Read Messages
     async handleSeenMessage(socket, data, callback) {
     try {
-        const messagesId = data.messages.map(id => new ObjectId(id));
+        const messagesId = data.messagesId.map(id => new mongoose.Types.ObjectId(id));
         const sender = data.sender;
         const cookieId = data.cookieId;
 
