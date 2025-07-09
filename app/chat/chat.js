@@ -1583,7 +1583,7 @@ class ChatApplication {
         const result = await ChatModel.updateOne(
         {
             sid: cookieId,
-            "messages._id": { $in: messagesId }
+            "messages.id": { $in: messagesId }
         },
         {
             $set: {
@@ -1593,7 +1593,7 @@ class ChatApplication {
         {
             arrayFilters: [
             {
-                "msg._id": { $in: messagesId },
+                "msg.id": { $in: messagesId },
                 "msg.sender": sender
             }
             ]
