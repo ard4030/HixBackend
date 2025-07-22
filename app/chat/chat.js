@@ -546,7 +546,9 @@ class ChatApplication {
                 merchantId:user._id,
                 targetOperator:null,
                 opName:null,
-                opId:null
+                opId:null,
+                firstTimeJoined:!this.onlineUsers1[details.sid]["firstTimeJoined"] && Date.now(),
+                lastTimeJoined:Date.now()
             } 
 
             // Get Last Message
@@ -692,6 +694,7 @@ class ChatApplication {
         Object.keys(this.onlineUsers1).forEach(item => {
             if(this.onlineUsers1[item]["socketId"] === socket.id){
                 this.onlineUsers1[item]["onlined"] = false;
+                this.onlineUsers1[item]["lastTimeLeft"] = Date.now();
                 MTIDCLIENTNEW = this.onlineUsers1[item].merchantId;
                 setOnlineUsers(this.onlineUsers1)
             }

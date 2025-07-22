@@ -46,15 +46,29 @@ class ProductController{
 
     async addSingleProduct(req,res,next){
         try {
-            const { title , category , price , slug , description , image } = req.body;
-            const createProduct = await ProductModel.create({
-                title , category , price , slug , description , image,
-                merchantId:req.user._id
-            })
+            const { title , category , price , slug , description , image ,_id } = req.body;
+
+            let message="";
+            if(_id){
+                // Edit
+                await ProductModel.updateOne({_id},{
+                    title , category , price , slug , description , image,
+                    merchantId:req.user._id
+                })
+                message = "محصول با موفقیت ویرایش شد."
+            }else{
+                // Add
+                const createProduct = await ProductModel.create({
+                    title , category , price , slug , description , image,
+                    merchantId:req.user._id
+                })
+                message = "محصول اضافه شد"
+            }
+            
 
             return res.status(SUCCESS).json({
                 success:true,
-                message:"محصول با موفقیت اضافه شد",
+                message,
                 data:createProduct
             })
 
