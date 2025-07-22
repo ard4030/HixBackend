@@ -254,7 +254,6 @@ class ChatApplication {
 
     }
 
-
     getOnlineUsers(){
         const filePath = path.join(__dirname, 'onlineusers.json'); 
         if (!fs.existsSync(filePath)) {
@@ -985,6 +984,7 @@ class ChatApplication {
                 this.onlineUsers1[cookieID]['lastMessage']= data.message;
                 this.onlineUsers1[cookieID]['lastMessageTime']= Date.now();
                 this.onlineUsers1[cookieID]['lastMessageSeen']= true;
+                this.onlineUsers1[cookieID]['whoLastMessage']= "user";
                 setOnlineUsers(this.onlineUsers1)
 
                 const operators = getOperatorsByMerchantIdNew(this.onlineOperators1,user.merchantId);
@@ -1202,7 +1202,8 @@ class ChatApplication {
             // New Version------------
             this.onlineUsers1[targetUser.cookieId]['lastMessage']= data?.message;
             this.onlineUsers1[targetUser.cookieId]['lastMessageSeen']= true;
-            this.onlineUsers1[targetUser.cookieId]['lastMessageOperatorTime']= Date.now();
+            this.onlineUsers1[targetUser.cookieId]['lastMessageTime']= Date.now();
+            this.onlineUsers1[cookieID]['whoLastMessage']= "operator";
             setOnlineUsers(this.onlineUsers1)
 
             // Update Users List
